@@ -187,13 +187,13 @@ class _GameCardState extends ConsumerState<GameCard> {
       return Icon(
         icon.icon,
         size: icon.size,
-        color: icon.color?.withOpacity(0.35) ?? Colors.white.withOpacity(0.35),
+        color: icon.color?.withValues(alpha: 0.35) ?? Colors.white.withValues(alpha: 0.35),
         semanticLabel: icon.semanticLabel,
         textDirection: icon.textDirection,
       );
     }
     if (icon is WormIcon) {
-      return WormIcon(color: icon.color.withOpacity(0.35), size: icon.size);
+      return WormIcon(color: icon.color.withValues(alpha: 0.35), size: icon.size);
     }
     return icon;
   }
