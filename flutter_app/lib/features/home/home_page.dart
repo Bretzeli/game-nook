@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,8 +30,8 @@ class HomePage extends ConsumerWidget {
     final crossAxisCount = gridWidth > context.rs(780)
         ? 3
         : gridWidth > context.rs(480)
-            ? 2
-            : 1;
+        ? 2
+        : 1;
 
     final games = [
       (GameId.wordle, Icons.grid_on_rounded, '/wordle'),
@@ -45,23 +47,28 @@ class HomePage extends ConsumerWidget {
     return CustomScrollView(
       slivers: [
         SliverPadding(
-          padding: EdgeInsets.fromLTRB(context.rs(24), context.rs(8), context.rs(24), 0),
+          padding: EdgeInsets.fromLTRB(
+            context.rs(24),
+            context.rs(8),
+            context.rs(24),
+            0,
+          ),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [decor.accentColor, decor.accentSecondary],
-                  ).createShader(bounds),
-                  child: Text(
-                    strings.homePickGame,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                )
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [decor.accentColor, decor.accentSecondary],
+                      ).createShader(bounds),
+                      child: Text(
+                        strings.homePickGame,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
                     .animate()
                     .fadeIn(duration: 500.ms, delay: 100.ms)
                     .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
@@ -74,35 +81,52 @@ class HomePage extends ConsumerWidget {
           child: Center(
             child: SizedBox(
               width: gridWidth,
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: spacing,
-                  crossAxisSpacing: spacing,
-                  mainAxisExtent: crossAxisCount == 1
-                      ? context.rs(130)
-                      : context.rs(168),
-                ),
-                itemCount: games.length,
-                itemBuilder: (context, index) {
-                  final (gameId, iconData, route) = games[index];
-                  final accent = index.isEven
-                      ? decor.accentColor
-                      : decor.accentSecondary;
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxWidth = math.min(constraints.maxWidth, gridWidth);
+                  final itemWidth =
+                      (maxWidth - spacing * (crossAxisCount - 1)) /
+                      crossAxisCount;
+                  final itemHeight = context.rs(164);
 
-                  final icon = iconData != null
-                      ? Icon(iconData, color: accent, size: iconSize)
-                      : WormIcon(color: accent, size: iconSize);
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth),
+                    child: Wrap(
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: [
+                        for (var index = 0; index < games.length; index++)
+                          Builder(
+                            builder: (context) {
+                              final (gameId, iconData, route) = games[index];
+                              final accent = index.isEven
+                                  ? decor.accentColor
+                                  : decor.accentSecondary;
 
-                  return GameCard(
-                    title: strings.gameName(gameId),
-                    description: strings.gameDescription(gameId),
-                    icon: icon,
-                    route: route,
-                    index: index,
-                    accentColor: accent,
+                              final icon = iconData != null
+                                  ? Icon(
+                                      iconData,
+                                      color: accent,
+                                      size: iconSize,
+                                    )
+                                  : WormIcon(color: accent, size: iconSize);
+
+                              return SizedBox(
+                                width: itemWidth,
+                                height: itemHeight,
+                                child: GameCard(
+                                  title: strings.gameName(gameId),
+                                  description: strings.gameDescription(gameId),
+                                  icon: icon,
+                                  route: route,
+                                  index: index,
+                                  accentColor: accent,
+                                ),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
                   );
                 },
               ),
