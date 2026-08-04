@@ -115,6 +115,7 @@ class HomePage extends ConsumerWidget {
                                 width: itemWidth,
                                 height: itemHeight,
                                 child: GameCard(
+                                  key: ValueKey(route),
                                   title: strings.gameName(gameId),
                                   description: strings.gameDescription(gameId),
                                   icon: icon,

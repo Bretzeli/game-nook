@@ -25,6 +25,7 @@ class AppNavBar extends ConsumerWidget {
     final hPad = context.rs(16);
     final vPad = context.rs(12);
     final radius = context.rs(20);
+    final placeholderWidth = context.rs(40);
 
     return SafeArea(
       bottom: false,
@@ -35,10 +36,7 @@ class AppNavBar extends ConsumerWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: decor.navBarColor,
-              border: Border.all(
-                color: decor.subtleNavBorder,
-                width: 0.5,
-              ),
+              border: Border.all(color: decor.subtleNavBorder, width: 0.5),
               boxShadow: [
                 BoxShadow(
                   color: decor.glowColor.withValues(alpha: 0.06),
@@ -88,14 +86,18 @@ class AppNavBar extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (showHomeButton)
-                          _NavIconButton(
-                            icon: Icons.arrow_back_rounded,
-                            tooltip: ref.watch(appStringsProvider).backToHome,
-                            onPressed: () => context.go('/'),
-                          )
-                        else
-                          const SizedBox.shrink(),
+                        SizedBox(
+                          width: showHomeButton ? null : placeholderWidth,
+                          child: showHomeButton
+                              ? _NavIconButton(
+                                  icon: Icons.arrow_back_rounded,
+                                  tooltip: ref
+                                      .watch(appStringsProvider)
+                                      .backToHome,
+                                  onPressed: () => context.go('/'),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_theme_extension.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/app_strings_provider.dart';
 import '../../features/games/game_placeholder_page.dart';
 import '../../features/home/home_page.dart';
-import '../../widgets/animated_background.dart';
 import '../../widgets/app_nav_bar.dart';
 import 'router_refresh.dart';
 
@@ -19,11 +19,14 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
     final strings = ref.watch(appStringsProvider);
+    final decor = context.decor;
 
     return Scaffold(
       body: Stack(
         children: [
-          const AnimatedBackground(),
+          Container(
+            decoration: BoxDecoration(gradient: decor.backgroundGradient),
+          ),
           Column(
             children: [
               AppNavBar(
@@ -64,9 +67,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: HomePage(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: HomePage()),
           ),
           GoRoute(
             path: '/wordle',
