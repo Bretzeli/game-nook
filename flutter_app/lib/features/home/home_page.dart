@@ -34,11 +34,11 @@ class HomePage extends ConsumerWidget {
         : 1;
 
     final games = [
-      (GameId.wordle, Icons.grid_on_rounded, '/wordle'),
-      (GameId.spellingBee, Icons.hexagon_rounded, '/spelling-bee'),
-      (GameId.sudoku, Icons.apps_rounded, '/sudoku'),
-      (GameId.dontWordle, Icons.block_rounded, '/dont-wordle'),
-      (GameId.wormdle, null, '/wormdle'),
+      (GameId.wordle, Icons.grid_on_rounded, '/wordle', true),
+      (GameId.spellingBee, Icons.hexagon_rounded, '/spelling-bee', false),
+      (GameId.sudoku, Icons.apps_rounded, '/sudoku', false),
+      (GameId.dontWordle, Icons.block_rounded, '/dont-wordle', false),
+      (GameId.wormdle, null, '/wormdle', false),
     ];
 
     final iconSize = context.rs(24);
@@ -98,7 +98,8 @@ class HomePage extends ConsumerWidget {
                         for (var index = 0; index < games.length; index++)
                           Builder(
                             builder: (context) {
-                              final (gameId, iconData, route) = games[index];
+                              final (gameId, iconData, route, playable) =
+                                  games[index];
                               final accent = index.isEven
                                   ? decor.accentColor
                                   : decor.accentSecondary;
@@ -122,6 +123,7 @@ class HomePage extends ConsumerWidget {
                                   route: route,
                                   index: index,
                                   accentColor: accent,
+                                  playable: playable,
                                 ),
                               );
                             },

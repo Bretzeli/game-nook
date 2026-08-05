@@ -17,6 +17,7 @@ class GameCard extends ConsumerStatefulWidget {
     required this.route,
     required this.index,
     required this.accentColor,
+    this.playable = false,
   });
 
   final String title;
@@ -25,6 +26,9 @@ class GameCard extends ConsumerStatefulWidget {
   final String route;
   final int index;
   final Color accentColor;
+
+  /// Games that are finished invite you in instead of promising a release.
+  final bool playable;
 
   @override
   ConsumerState<GameCard> createState() => _GameCardState();
@@ -142,7 +146,9 @@ class _GameCardState extends ConsumerState<GameCard> {
                             Row(
                               children: [
                                 Text(
-                                  ref.watch(appStringsProvider).comingSoon,
+                                  widget.playable
+                                      ? ref.watch(appStringsProvider).play
+                                      : ref.watch(appStringsProvider).comingSoon,
                                   style: theme.textTheme.labelLarge?.copyWith(
                                     color: widget.accentColor,
                                     letterSpacing: 0.5,
@@ -150,7 +156,9 @@ class _GameCardState extends ConsumerState<GameCard> {
                                 ),
                                 SizedBox(width: context.rs(4)),
                                 Icon(
-                                  Icons.arrow_forward_rounded,
+                                  widget.playable
+                                      ? Icons.play_arrow_rounded
+                                      : Icons.arrow_forward_rounded,
                                   size: context.rs(14),
                                   color: widget.accentColor,
                                 ),
