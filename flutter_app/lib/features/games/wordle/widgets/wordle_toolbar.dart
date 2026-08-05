@@ -12,9 +12,18 @@ import 'wordle_chip.dart';
 
 /// Word length, difficulty, hard mode and the two game actions.
 class WordleToolbar extends ConsumerWidget {
-  const WordleToolbar({super.key, required this.canGiveUp});
+  const WordleToolbar({
+    super.key,
+    required this.canGiveUp,
+    required this.canHint,
+    required this.hintsUsed,
+    required this.onHint,
+  });
 
   final bool canGiveUp;
+  final bool canHint;
+  final int hintsUsed;
+  final VoidCallback onHint;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -102,6 +111,16 @@ class WordleToolbar extends ConsumerWidget {
             label: strings.wordleHardMode,
             active: settings.hardMode,
             onTap: () => controller.setHardMode(!settings.hardMode),
+          ),
+        ),
+        Tooltip(
+          message: strings.wordleHintDescription,
+          child: WordleChip(
+            icon: Icons.lightbulb_outline_rounded,
+            label: strings.wordleHint,
+            badge: '$hintsUsed',
+            enabled: canHint,
+            onTap: canHint ? onHint : null,
           ),
         ),
         WordleChip(

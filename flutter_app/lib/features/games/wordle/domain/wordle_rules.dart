@@ -29,6 +29,28 @@ List<LetterStatus> evaluateGuess(String guess, String solution) {
   return statuses;
 }
 
+/// Whether [candidate] could still be the solution given everything the board
+/// has revealed.
+///
+/// The test is to replay each previous guess against [candidate]: if that
+/// would have produced exactly the colours the player already saw, nothing
+/// learned so far rules the word out. Every surviving word is strictly closer
+/// to the solution than one that was already excluded — and, because it
+/// honours all greens, yellows and greys by construction, it is always a legal
+/// guess in hard mode too.
+bool isConsistentWith(String candidate, List<WordleRow> rows) {
+  for (final row in rows) {
+    if (row.isSolution) continue;
+    if (row.word.length != candidate.length) continue;
+
+    final replay = evaluateGuess(row.word, candidate);
+    for (var i = 0; i < replay.length; i++) {
+      if (replay[i] != row.statuses[i]) return false;
+    }
+  }
+  return true;
+}
+
 /// Best status seen per letter, used to colour the keyboard. Only the first
 /// [revealedRows] rows are taken into account so the keyboard updates in step
 /// with the flip animation.

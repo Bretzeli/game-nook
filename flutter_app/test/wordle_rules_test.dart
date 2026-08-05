@@ -73,6 +73,80 @@ void main() {
     });
   });
 
+  group('isConsistentWith', () {
+    test('keeps words that would have produced the same colours', () {
+      final rows = [_row('SPEAR', 'SNAKE')];
+
+      expect(isConsistentWith('SNAKE', rows), isTrue);
+      expect(isConsistentWith('SHAVE', rows), isTrue);
+    });
+
+    test('drops words the board already ruled out', () {
+      final rows = [_row('SPEAR', 'SNAKE')];
+
+      // Uses a grey letter.
+      expect(isConsistentWith('SPINE', rows), isFalse);
+      // Misses a letter known to be in the word.
+      expect(isConsistentWith('SILTY', rows), isFalse);
+      // Moves a green letter away from its confirmed slot.
+      expect(isConsistentWith('AMAZE', rows), isFalse);
+      // Leaves a yellow letter in the slot it was already ruled out for —
+      // there it would have come back green, not yellow.
+      expect(isConsistentWith('SEDAN', rows), isFalse);
+    });
+
+    test('respects how often a duplicated letter occurs', () {
+      // EERIE against THERE: exactly two E's, so a candidate with three or
+      // with one cannot be the solution.
+      final rows = [_row('EERIE', 'THERE')];
+
+      expect(isConsistentWith('THERE', rows), isTrue);
+      expect(isConsistentWith('EDGES', rows), isFalse);
+    });
+
+    test('a word is always consistent with its own feedback', () {
+      const solution = 'GEESE';
+      final rows = [
+        _row('SEEDS', solution),
+        _row('CRANE', solution),
+        _row('TEASE', solution),
+      ];
+
+      expect(isConsistentWith(solution, rows), isTrue);
+    });
+
+    test('ignores a row filled in by giving up', () {
+      const solutionRow = WordleRow(
+        word: 'SNAKE',
+        statuses: [
+          LetterStatus.correct,
+          LetterStatus.correct,
+          LetterStatus.correct,
+          LetterStatus.correct,
+          LetterStatus.correct,
+        ],
+        isSolution: true,
+      );
+
+      expect(isConsistentWith('CRANE', [solutionRow]), isTrue);
+    });
+
+    test('a consistent word is always legal in hard mode', () {
+      const solution = 'SNAKE';
+      final rows = [_row('SPEAR', solution), _row('SHALE', solution)];
+      final constraints = HardModeConstraints.fromRows(rows);
+
+      for (final candidate in ['SNAKE', 'SCALE', 'SHAVE', 'STAGE', 'SUAVE']) {
+        if (!isConsistentWith(candidate, rows)) continue;
+        expect(
+          constraints.validate(candidate),
+          isNull,
+          reason: '$candidate is consistent, so hard mode must accept it',
+        );
+      }
+    });
+  });
+
   group('hard mode', () {
     HardModeViolation? validate(List<WordleRow> rows, String guess) =>
         HardModeConstraints.fromRows(rows).validate(guess);

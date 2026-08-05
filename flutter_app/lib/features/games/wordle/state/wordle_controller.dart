@@ -145,6 +145,47 @@ class WordleGameController extends Notifier<WordleGameState> {
     return null;
   }
 
+  /// Fills the row being typed with a word that could still be the solution.
+  ///
+  /// Anything the board already ruled out is skipped, so a hint always moves
+  /// the player closer; the solution itself is held back so a hint never wins
+  /// the game outright. When nothing but the solution is left there is nothing
+  /// closer to offer, and the caller gets to ask whether to solve instead.
+  WordleHintOutcome hint() {
+    if (!state.isPlaying || state.solution.isEmpty) {
+      return WordleHintOutcome.unavailable;
+    }
+
+    final candidates = <String>[];
+    for (final word in state.solutionPool) {
+      if (word == state.solution) continue;
+      // Only offer words the player would actually be allowed to submit.
+      if (!state.acceptedWords.contains(word)) continue;
+      if (!isConsistentWith(word, state.rows)) continue;
+      candidates.add(word);
+    }
+
+    if (candidates.isEmpty) return WordleHintOutcome.onlySolutionLeft;
+
+    _fillInput(candidates[_random.nextInt(candidates.length)]);
+    return WordleHintOutcome.filled;
+  }
+
+  /// Writes the solution into the row after the player took up the offer to
+  /// solve. It still counts as a hint, and is still theirs to submit.
+  void fillSolution() {
+    if (!state.isPlaying || state.solution.isEmpty) return;
+    _fillInput(state.solution);
+  }
+
+  void _fillInput(String word) {
+    state = state.copyWith(
+      input: word.split(''),
+      cursor: state.wordLength,
+      hintsUsed: state.hintsUsed + 1,
+    );
+  }
+
   /// Ends the round and writes the solution into the next free row.
   void giveUp() {
     if (!state.canGiveUp) return;
@@ -218,6 +259,8 @@ class WordleGameController extends Notifier<WordleGameState> {
         input: List<String>.filled(length, ''),
         cursor: 0,
         acceptedWords: accepted,
+        solutionPool: pool,
+        hintsUsed: 0,
         round: state.round + 1,
       );
     } catch (_) {

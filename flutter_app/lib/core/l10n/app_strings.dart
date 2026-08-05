@@ -118,6 +118,24 @@ class AppStrings {
 
   String get wordleGiveUp => _isGerman ? 'Aufgeben' : 'Give up';
 
+  String get wordleHint => _isGerman ? 'Tipp' : 'Hint';
+
+  String get wordleHintDescription => _isGerman
+      ? 'Füllt ein Wort ein, das noch zu allen Hinweisen passt'
+      : 'Fills in a word that still fits every hint';
+
+  String get wordleHintOnlySolutionTitle =>
+      _isGerman ? 'Nur noch die Lösung' : 'Only the solution is left';
+
+  String get wordleHintOnlySolutionBody => _isGerman
+      ? 'Kein anderes Wort passt noch zu deinen Hinweisen. Soll die Lösung '
+            'eingetragen werden?'
+      : 'No other word still fits your hints. Shall the solution be filled in?';
+
+  String get wordleHintSolve => _isGerman ? 'Lösung eintragen' : 'Fill it in';
+
+  String get wordleHintKeepPlaying => _isGerman ? 'Weiterraten' : 'Keep trying';
+
   String get wordleNotEnoughLetters =>
       _isGerman ? 'Zu wenige Buchstaben' : 'Not enough letters';
 

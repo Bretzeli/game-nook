@@ -87,6 +87,74 @@ class _WordlePageState extends ConsumerState<WordlePage>
     }
   }
 
+  Future<void> _onHint() async {
+    final controller = ref.read(wordleGameProvider.notifier);
+
+    switch (controller.hint()) {
+      case WordleHintOutcome.filled:
+      case WordleHintOutcome.unavailable:
+        break;
+      case WordleHintOutcome.onlySolutionLeft:
+        final solve = await _askToSolve();
+        if (!mounted) return;
+        if (solve ?? false) controller.fillSolution();
+    }
+    _focusNode.requestFocus();
+  }
+
+  /// Nothing is left to suggest short of the answer, so the player decides.
+  Future<bool?> _askToSolve() {
+    final strings = ref.read(appStringsProvider);
+    final decor = context.decor;
+    final theme = Theme.of(context);
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: decor.cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: decor.cardRadius,
+          side: BorderSide(color: decor.cardBorderColor),
+        ),
+        icon: Icon(
+          Icons.lightbulb_rounded,
+          color: decor.accentColor,
+          size: context.rs(28),
+        ),
+        title: Text(
+          strings.wordleHintOnlySolutionTitle,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleMedium,
+        ),
+        content: Text(
+          strings.wordleHintOnlySolutionBody,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: decor.subtleTextColor,
+            height: 1.4,
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              strings.wordleHintKeepPlaying,
+              style: TextStyle(color: decor.subtleTextColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              strings.wordleHintSolve,
+              style: TextStyle(color: decor.accentColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _submit() {
     final rejection = ref.read(wordleGameProvider.notifier).submit();
     if (rejection == null) return;
@@ -189,7 +257,12 @@ class _WordlePageState extends ConsumerState<WordlePage>
           ),
           child: Column(
             children: [
-              WordleToolbar(canGiveUp: game.canGiveUp && !_isRevealing),
+              WordleToolbar(
+                canGiveUp: game.canGiveUp && !_isRevealing,
+                canHint: game.isPlaying && !_isRevealing,
+                hintsUsed: game.hintsUsed,
+                onHint: _onHint,
+              ),
               SizedBox(height: context.rs(12)),
               Expanded(child: _buildBoard(game)),
               SizedBox(height: context.rs(8)),

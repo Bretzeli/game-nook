@@ -10,6 +10,7 @@ class WordleChip extends StatefulWidget {
     required this.label,
     this.icon,
     this.trailingIcon,
+    this.badge,
     this.onTap,
     this.active = false,
     this.enabled = true,
@@ -18,6 +19,10 @@ class WordleChip extends StatefulWidget {
   final String label;
   final IconData? icon;
   final IconData? trailingIcon;
+
+  /// Small count carried inside the chip, e.g. hints used so far.
+  final String? badge;
+
   final VoidCallback? onTap;
 
   /// Renders the chip in its "switched on" state (used by hard mode).
@@ -68,6 +73,28 @@ class _WordleChipState extends State<WordleChip> {
             widget.label,
             style: theme.textTheme.labelLarge?.copyWith(color: foreground),
           ),
+          if (widget.badge != null) ...[
+            SizedBox(width: context.rs(6)),
+            Container(
+              constraints: BoxConstraints(minWidth: context.rs(18)),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.rs(5),
+                vertical: context.rs(1),
+              ),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: foreground.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(context.rs(9)),
+              ),
+              child: Text(
+                widget.badge!,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: foreground,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
           if (widget.trailingIcon != null) ...[
             SizedBox(width: context.rs(2)),
             Icon(widget.trailingIcon, size: context.rs(15), color: foreground),

@@ -12,6 +12,31 @@ import 'package:flutter_app/features/games/wordle/state/wordle_controller.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_game_state.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_settings.dart';
 
+/// A repository serving one fixed set of same-length words, for tests that
+/// need to know exactly which candidates are in play.
+class _FixedRepository extends WordleWordRepository {
+  _FixedRepository(this.words);
+
+  final List<String> words;
+
+  @override
+  Future<List<int>> availableLengths(
+    String languageCode,
+    WordleDifficulty difficulty,
+  ) async => [words.first.length];
+
+  @override
+  Future<List<String>> solutionPool(
+    String languageCode,
+    WordleDifficulty difficulty,
+    int length,
+  ) async => words;
+
+  @override
+  Future<Set<String>> acceptedWords(String languageCode, int length) async =>
+      words.toSet();
+}
+
 /// Waits until the controller has a solution loaded from the bundled lists.
 ///
 /// A restart keeps the previous board on screen while the new word list is
@@ -191,6 +216,128 @@ void main() {
     settings.setHardMode(false);
     expect(controller.submit(), isNull);
     expect(container.read(wordleGameProvider).rows, hasLength(2));
+  });
+
+  group('hints', () {
+    test('fills a word that could still be the solution', () async {
+      final container = makeContainer();
+      final state = await _ready(container);
+      final controller = container.read(wordleGameProvider.notifier);
+
+      expect(controller.hint(), WordleHintOutcome.filled);
+
+      final after = container.read(wordleGameProvider);
+      expect(after.hintsUsed, 1);
+      expect(after.typedWord.length, after.wordLength);
+      expect(after.cursor, after.wordLength);
+      // Never the answer itself, and always submittable.
+      expect(after.typedWord, isNot(state.solution));
+      expect(after.acceptedWords, contains(after.typedWord));
+    });
+
+    test('only suggests words that fit every hint so far', () async {
+      final container = makeContainer();
+      final state = await _ready(container);
+      final controller = container.read(wordleGameProvider.notifier);
+
+      // Play an opener so the board carries real constraints.
+      final opener = state.solutionPool.firstWhere(
+        (word) =>
+            word != state.solution && state.acceptedWords.contains(word),
+      );
+      for (final letter in opener.split('')) {
+        controller.typeLetter(letter);
+      }
+      expect(controller.submit(), isNull);
+
+      final rows = container.read(wordleGameProvider).rows;
+      for (var i = 0; i < 25; i++) {
+        final outcome = controller.hint();
+        if (outcome == WordleHintOutcome.onlySolutionLeft) break;
+
+        final suggestion = container.read(wordleGameProvider).typedWord;
+        expect(isConsistentWith(suggestion, rows), isTrue);
+        expect(suggestion, isNot(state.solution));
+      }
+    });
+
+    test('a hint is accepted even in hard mode', () async {
+      final container = makeContainer();
+      final state = await _ready(container);
+      final controller = container.read(wordleGameProvider.notifier);
+      container.read(wordleSettingsProvider.notifier).setHardMode(true);
+
+      final opener = state.solutionPool.firstWhere(
+        (word) =>
+            word != state.solution && state.acceptedWords.contains(word),
+      );
+      for (final letter in opener.split('')) {
+        controller.typeLetter(letter);
+      }
+      expect(controller.submit(), isNull);
+
+      if (controller.hint() != WordleHintOutcome.filled) return;
+      // A hinted word honours every revealed clue by construction, so hard
+      // mode must let it through.
+      expect(controller.submit(), isNull);
+    });
+
+    test('offers to solve once nothing but the solution is left', () async {
+      // A pool of exactly two words: guessing the wrong one rules it out and
+      // leaves the solution as the only word that still fits.
+      final container = ProviderContainer(
+        overrides: [
+          wordleWordRepositoryProvider.overrideWithValue(
+            _FixedRepository(const ['CRANE', 'SLATE']),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final state = await _ready(container);
+      final controller = container.read(wordleGameProvider.notifier);
+      final other = state.solutionPool.firstWhere(
+        (word) => word != state.solution,
+      );
+
+      expect(controller.hint(), WordleHintOutcome.filled);
+      expect(container.read(wordleGameProvider).typedWord, other);
+      expect(controller.submit(), isNull);
+
+      // Nothing closer left to offer.
+      expect(controller.hint(), WordleHintOutcome.onlySolutionLeft);
+      // Asking alone neither fills the row nor spends a hint.
+      expect(container.read(wordleGameProvider).typedWord, isEmpty);
+      expect(container.read(wordleGameProvider).hintsUsed, 1);
+
+      controller.fillSolution();
+      expect(container.read(wordleGameProvider).typedWord, state.solution);
+      expect(container.read(wordleGameProvider).hintsUsed, 2);
+    });
+
+    test('the counter resets with a new game', () async {
+      final container = makeContainer();
+      final first = await _ready(container);
+      final controller = container.read(wordleGameProvider.notifier);
+
+      controller.hint();
+      expect(container.read(wordleGameProvider).hintsUsed, 1);
+
+      controller.newGame();
+      final second = await _ready(container, afterRound: first.round);
+      expect(second.hintsUsed, 0);
+    });
+
+    test('does nothing once the round is over', () async {
+      final container = makeContainer();
+      await _ready(container);
+      final controller = container.read(wordleGameProvider.notifier);
+
+      controller.giveUp();
+
+      expect(controller.hint(), WordleHintOutcome.unavailable);
+      expect(container.read(wordleGameProvider).hintsUsed, 0);
+    });
   });
 
   test('changing the difficulty keeps the running game', () async {

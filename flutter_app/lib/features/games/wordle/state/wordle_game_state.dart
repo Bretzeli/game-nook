@@ -11,6 +11,8 @@ class WordleGameState {
     required this.input,
     required this.cursor,
     required this.acceptedWords,
+    required this.solutionPool,
+    required this.hintsUsed,
     required this.round,
   });
 
@@ -24,6 +26,8 @@ class WordleGameState {
        input = const [],
        cursor = 0,
        acceptedWords = const {},
+       solutionPool = const [],
+       hintsUsed = 0,
        round = 0;
 
   final String languageCode;
@@ -43,6 +47,13 @@ class WordleGameState {
   final int cursor;
 
   final Set<String> acceptedWords;
+
+  /// The words the solution was drawn from — the set hints pick from, so a
+  /// hint is always a word that could plausibly have been the answer.
+  final List<String> solutionPool;
+
+  /// Hints taken in this round, shown on the hint button.
+  final int hintsUsed;
 
   /// Bumped for every new game so the board can reset its animations.
   final int round;
@@ -65,6 +76,7 @@ class WordleGameState {
     List<WordleRow>? rows,
     List<String>? input,
     int? cursor,
+    int? hintsUsed,
   }) {
     return WordleGameState(
       languageCode: languageCode,
@@ -76,6 +88,8 @@ class WordleGameState {
       input: input ?? this.input,
       cursor: cursor ?? this.cursor,
       acceptedWords: acceptedWords,
+      solutionPool: solutionPool,
+      hintsUsed: hintsUsed ?? this.hintsUsed,
       round: round,
     );
   }

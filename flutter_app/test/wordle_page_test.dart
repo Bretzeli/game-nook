@@ -7,6 +7,7 @@ import 'package:flutter_app/app.dart';
 import 'package:flutter_app/features/games/wordle/data/wordle_word_repository.dart';
 import 'package:flutter_app/features/games/wordle/domain/wordle_models.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_controller.dart';
+import 'package:flutter_app/features/games/wordle/widgets/wordle_chip.dart';
 import 'package:flutter_app/features/games/wordle/widgets/wordle_grid.dart';
 import 'package:flutter_app/features/games/wordle/widgets/wordle_keyboard.dart';
 import 'package:flutter_app/features/games/wordle/widgets/wordle_tile.dart';
@@ -34,15 +35,39 @@ Future<WordleWordRepository> _warmRepository(
   return repository;
 }
 
+/// A repository serving one fixed pair of words, so the candidate set is
+/// exhausted after a single guess.
+class _TwoWordRepository extends WordleWordRepository {
+  @override
+  Future<List<int>> availableLengths(
+    String languageCode,
+    WordleDifficulty difficulty,
+  ) async => const [5];
+
+  @override
+  Future<List<String>> solutionPool(
+    String languageCode,
+    WordleDifficulty difficulty,
+    int length,
+  ) async => const ['CRANE', 'SLATE'];
+
+  @override
+  Future<Set<String>> acceptedWords(String languageCode, int length) async =>
+      const {'CRANE', 'SLATE'};
+}
+
+WordleWordRepository _twoWordRepository() => _TwoWordRepository();
+
 Future<void> _openWordle(
   WidgetTester tester, {
   List<String> languages = const ['en'],
+  WordleWordRepository? repository,
 }) async {
-  final repository = await _warmRepository(tester, languages);
+  final resolved = repository ?? await _warmRepository(tester, languages);
 
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [wordleWordRepositoryProvider.overrideWithValue(repository)],
+      overrides: [wordleWordRepositoryProvider.overrideWithValue(resolved)],
       child: const GameNookApp(),
     ),
   );
@@ -69,6 +94,9 @@ Finder _onBoard(String letter) => find.descendant(
   of: find.byType(WordleGrid),
   matching: find.text(letter),
 );
+
+Finder _hintChip() =>
+    find.ancestor(of: find.text('Hint'), matching: find.byType(WordleChip));
 
 /// flutter_animate defers a freshly mounted animation by a zero timer, so one
 /// settle pass can end with that timer still queued.
@@ -267,6 +295,87 @@ void main() {
           .first,
     );
     expect(tile.status, isNotNull);
+  });
+
+  testWidgets('the hint button fills a row and counts up', (tester) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openWordle(tester);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(WordleGrid)),
+      listen: false,
+    );
+    expect(container.read(wordleGameProvider).typedWord, isEmpty);
+
+    // The counter starts at zero and lives inside the hint button itself.
+    expect(
+      find.descendant(of: _hintChip(), matching: find.text('0')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Hint'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final game = container.read(wordleGameProvider);
+    expect(game.typedWord.length, game.wordLength);
+    expect(game.typedWord, isNot(game.solution));
+    expect(game.hintsUsed, 1);
+    expect(
+      find.descendant(of: _hintChip(), matching: find.text('1')),
+      findsOneWidget,
+    );
+
+    // The filled word is a legal guess.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.pump(revealDurationFor(game.wordLength));
+    await _settle(tester);
+    expect(container.read(wordleGameProvider).rows, hasLength(1));
+  });
+
+  testWidgets('the hint offers to solve when only the solution is left', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openWordle(tester, repository: _twoWordRepository());
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(WordleGrid)),
+      listen: false,
+    );
+    final solution = container.read(wordleGameProvider).solution;
+
+    // Burn the only alternative, so the solution is all that is left.
+    await tester.tap(find.text('Hint'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.pump(revealDurationFor(solution.length));
+    await _settle(tester);
+
+    await tester.tap(find.text('Hint'));
+    await _settle(tester);
+
+    expect(find.text('Only the solution is left'), findsOneWidget);
+
+    // Declining leaves the row alone.
+    await tester.tap(find.text('Keep trying'));
+    await _settle(tester);
+    expect(container.read(wordleGameProvider).typedWord, isEmpty);
+
+    await tester.tap(find.text('Hint'));
+    await _settle(tester);
+    await tester.tap(find.text('Fill it in'));
+    await _settle(tester);
+
+    expect(container.read(wordleGameProvider).typedWord, solution);
+    expect(container.read(wordleGameProvider).hintsUsed, 2);
   });
 
   testWidgets('the German keyboard offers umlaut keys', (tester) async {
