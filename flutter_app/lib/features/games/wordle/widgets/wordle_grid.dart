@@ -50,10 +50,15 @@ class WordleGrid extends StatelessWidget {
       builder: (context, constraints) {
         final gap = math.max(4.0, constraints.maxWidth * 0.012);
         final byWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
-        final byHeight = (constraints.maxHeight - gap * (rows - 1)) / rows;
-        final size = math
-            .min(math.min(byWidth, byHeight), context.rs(72))
-            .clamp(16.0, context.rs(72));
+        // A hair of slack keeps sub-pixel rounding from ever pushing the
+        // column's total height past what the parent actually granted.
+        final byHeight =
+            (constraints.maxHeight - gap * (rows - 1) - 0.5) / rows;
+        final fit = math.min(byWidth, byHeight);
+        final maxSize = context.rs(72);
+        // Below the usual minimum there is no slack left to spare, so tiles
+        // shrink instead of being forced to a size that would overflow.
+        final size = fit >= 16.0 ? math.min(fit, maxSize) : math.max(0.0, fit);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
