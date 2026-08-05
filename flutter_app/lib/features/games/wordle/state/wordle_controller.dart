@@ -138,7 +138,7 @@ class WordleGameController extends Notifier<WordleGameState> {
       cursor: 0,
       phase: won
           ? WordlePhase.won
-          : rows.length >= kWordleMaxAttempts
+          : rows.length >= state.maxAttempts
           ? WordlePhase.lost
           : WordlePhase.playing,
     );

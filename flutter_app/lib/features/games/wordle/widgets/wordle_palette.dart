@@ -21,6 +21,8 @@ class WordlePalette {
     required this.onFilled,
     required this.keyIdle,
     required this.keyText,
+    required this.keyAbsentBackground,
+    required this.keyAbsentText,
   });
 
   final Color correct;
@@ -34,6 +36,12 @@ class WordlePalette {
   final Color keyIdle;
   final Color keyText;
 
+  /// A ruled-out key needs to stand apart from a row of otherwise colourful
+  /// keys at a glance, so it gets its own hue-neutral "dead" treatment rather
+  /// than reusing [absent] (which is tuned for a single freshly-scored tile).
+  final Color keyAbsentBackground;
+  final Color keyAbsentText;
+
   factory WordlePalette.of(BuildContext context) {
     final theme = Theme.of(context);
     final decor = context.decor;
@@ -45,6 +53,17 @@ class WordlePalette {
             decor.subtleTextColor.withValues(alpha: 0.85),
             decor.cardBorderColor,
           );
+
+    // A neutral slate grey, blended in at the same strength in every dark
+    // theme, so a ruled-out key reads as "dead" instead of just a duller
+    // shade of that theme's own (often colourful) border tone.
+    const neutralGrey = Color(0xFF6C7686);
+    final keyAbsentBackground = isDark
+        ? Color.alphaBlend(neutralGrey.withValues(alpha: 0.62), decor.cardColor)
+        : absent;
+    final keyAbsentText = isDark
+        ? Colors.white.withValues(alpha: 0.72)
+        : Colors.white;
 
     return WordlePalette(
       correct: isDark ? const Color(0xFF4C9A57) : const Color(0xFF5FA45B),
@@ -64,6 +83,8 @@ class WordlePalette {
               decor.subtleTextColor.withValues(alpha: 0.18),
               decor.cardColor,
             ),
+      keyAbsentBackground: keyAbsentBackground,
+      keyAbsentText: keyAbsentText,
       keyText: theme.textTheme.titleMedium?.color ?? Colors.white,
     );
   }

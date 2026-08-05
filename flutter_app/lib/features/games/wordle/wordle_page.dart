@@ -295,6 +295,7 @@ class _WordlePageState extends ConsumerState<WordlePage>
         won: game.phase == WordlePhase.won,
         solution: game.solution,
         attempts: game.attemptsUsed,
+        maxAttempts: game.maxAttempts,
         onNewGame: ref.read(wordleGameProvider.notifier).newGame,
       );
     } else if (_message != null) {

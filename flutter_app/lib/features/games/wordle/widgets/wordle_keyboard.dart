@@ -49,7 +49,7 @@ class WordleKeyboard extends StatelessWidget {
         final units = math.max(widestRow, unitsInBottomRow).toDouble();
         final keyWidth =
             (constraints.maxWidth - gap * (units - 1)) / units;
-        final keyHeight = math.min(keyWidth * 1.34, 56.0);
+        final keyHeight = math.min(keyWidth * 1.6, 68.0);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -150,10 +150,16 @@ class _WordleKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final decor = context.decor;
-    final background = status == null
-        ? palette.keyIdle
-        : palette.colorFor(status!);
-    final foreground = status == null ? palette.keyText : palette.onFilled;
+    final background = switch (status) {
+      null => palette.keyIdle,
+      LetterStatus.absent => palette.keyAbsentBackground,
+      _ => palette.colorFor(status!),
+    };
+    final foreground = switch (status) {
+      null => palette.keyText,
+      LetterStatus.absent => palette.keyAbsentText,
+      _ => palette.onFilled,
+    };
     final radius = BorderRadius.circular(math.min(decor.buttonBorderRadius, 10));
 
     return SizedBox(
@@ -176,9 +182,13 @@ class _WordleKey extends StatelessWidget {
               color: background.withValues(alpha: onTap == null ? 0.5 : 1),
               borderRadius: radius,
               border: Border.all(
-                color: status == null
-                    ? decor.cardBorderColor.withValues(alpha: 0.6)
-                    : Colors.transparent,
+                color: switch (status) {
+                  null => decor.cardBorderColor.withValues(alpha: 0.6),
+                  // A faint edge keeps a ruled-out key readable as a key,
+                  // rather than a flat patch melting into the background.
+                  LetterStatus.absent => Colors.black.withValues(alpha: 0.18),
+                  _ => Colors.transparent,
+                },
                 width: 1,
               ),
             ),

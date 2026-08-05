@@ -1,5 +1,6 @@
-/// Number of guesses a player gets, matching the game description on the
-/// home screen ("guess the word in six tries").
+/// Base number of guesses a player gets, matching the game description on the
+/// home screen ("guess the word in six tries"). Words longer than
+/// [kWordleDefaultLength] get extra attempts — see [wordleMaxAttempts].
 const int kWordleMaxAttempts = 6;
 
 /// Word lengths the length picker offers. Entries are only selectable when the
@@ -7,8 +8,14 @@ const int kWordleMaxAttempts = 6;
 /// length.
 const int kWordleMinLength = 3;
 const int kWordleMaxLength = 11;
-const int kWordleDefaultLength = 6;
+const int kWordleDefaultLength = 5;
 const int kWordleMinWordsPerLength = 20;
+
+/// Longer words are harder to place blind, so every letter past the default
+/// length buys one extra guess.
+int wordleMaxAttempts(int wordLength) =>
+    kWordleMaxAttempts +
+    (wordLength > kWordleDefaultLength ? wordLength - kWordleDefaultLength : 0);
 
 /// How a single letter of a submitted guess relates to the solution.
 enum LetterStatus { correct, present, absent }

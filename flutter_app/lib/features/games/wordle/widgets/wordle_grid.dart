@@ -44,16 +44,18 @@ class WordleGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = WordlePalette.of(context);
     final columns = game.wordLength;
-    final rows = math.max(kWordleMaxAttempts, game.rows.length);
+    final rows = math.max(game.maxAttempts, game.rows.length);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final gap = math.max(4.0, constraints.maxWidth * 0.012);
         final byWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
-        // A hair of slack keeps sub-pixel rounding from ever pushing the
-        // column's total height past what the parent actually granted.
+        // A couple of pixels of slack keep sub-pixel rounding — and the odd
+        // bit of padding an effect like shimmer() adds to a single row —
+        // from ever pushing the column's total height past what the parent
+        // actually granted.
         final byHeight =
-            (constraints.maxHeight - gap * (rows - 1) - 0.5) / rows;
+            (constraints.maxHeight - gap * (rows - 1) - 2.0) / rows;
         final fit = math.min(byWidth, byHeight);
         final maxSize = context.rs(72);
         // Below the usual minimum there is no slack left to spare, so tiles
@@ -125,6 +127,10 @@ class WordleGrid extends StatelessWidget {
             delay: 60.ms,
             duration: 900.ms,
             color: Colors.white.withValues(alpha: 0.45),
+            // shimmer() pads its target by 0.5px on every side by default (to
+            // smooth its ShaderMask edges), which is just enough extra height
+            // on this row to overflow the board's tightly fitted Column.
+            padding: 0,
           );
     }
 

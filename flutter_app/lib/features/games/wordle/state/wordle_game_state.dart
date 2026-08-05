@@ -51,6 +51,8 @@ class WordleGameState {
 
   bool get canGiveUp => isPlaying && solution.isNotEmpty;
 
+  int get maxAttempts => wordleMaxAttempts(wordLength);
+
   int get attemptsUsed => rows.where((row) => !row.isSolution).length;
 
   String get typedWord => input.join();

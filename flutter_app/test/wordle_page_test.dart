@@ -92,8 +92,8 @@ void main() {
       await _openWordle(tester);
 
       expect(find.byType(WordleKeyboard), findsOneWidget);
-      // Six rows of tiles for the default six letter word.
-      expect(find.byType(WordleTile), findsNWidgets(36));
+      // Six rows of tiles for the default five letter word.
+      expect(find.byType(WordleTile), findsNWidgets(30));
     });
   }
 
@@ -177,6 +177,38 @@ void main() {
     expect(find.text('In 1 of 6 tries'), findsOneWidget);
   });
 
+  testWidgets('a win does not overflow the board on a short phone', (
+    tester,
+  ) async {
+    // Tight enough vertically that the grid's tile size is height-bound,
+    // which is what exposes a stray pixel on the winning row's animation.
+    tester.view.physicalSize = const Size(390, 700);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openWordle(tester);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(WordleGrid)),
+      listen: false,
+    );
+    final solution = container.read(wordleGameProvider).solution;
+    for (final letter in solution.split('')) {
+      container.read(wordleGameProvider.notifier).typeLetter(letter);
+    }
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    // Push well past the flip *and* the win row's bow/shimmer animation,
+    // where the shimmer effect's own padding used to overflow the Column.
+    await tester.pump(revealDurationFor(solution.length));
+    await tester.pump(const Duration(milliseconds: 1500));
+    await _settle(tester);
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('giving up writes the solution onto the board', (tester) async {
     tester.view.physicalSize = const Size(834, 1112);
     tester.view.devicePixelRatio = 1.0;
@@ -212,13 +244,13 @@ void main() {
       listen: false,
     );
     final controller = container.read(wordleGameProvider.notifier);
-    for (final letter in 'CRANES'.split('')) {
+    for (final letter in 'CRANE'.split('')) {
       controller.typeLetter(letter);
     }
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
-    await tester.pump(revealDurationFor(6));
+    await tester.pump(revealDurationFor(5));
     await _settle(tester);
 
     await tester.tap(find.byTooltip('Back to home'));

@@ -46,7 +46,7 @@ void main() {
     return container;
   }
 
-  test('starts a six letter English game from the guessable list', () async {
+  test('starts a five letter English game from the guessable list', () async {
     final container = makeContainer();
 
     final state = await _ready(container);
@@ -100,14 +100,14 @@ void main() {
     await _ready(container);
     final controller = container.read(wordleGameProvider.notifier);
 
-    for (final letter in 'CRANES'.split('')) {
+    for (final letter in 'CRANE'.split('')) {
       controller.typeLetter(letter);
     }
-    expect(container.read(wordleGameProvider).typedWord, 'CRANES');
+    expect(container.read(wordleGameProvider).typedWord, 'CRANE');
 
     controller.selectSlot(2);
     controller.typeLetter('O');
-    expect(container.read(wordleGameProvider).typedWord, 'CRONES');
+    expect(container.read(wordleGameProvider).typedWord, 'CRONE');
     expect(container.read(wordleGameProvider).cursor, 3);
 
     // Backspace clears the slot left of the caret, like a text field.
@@ -134,13 +134,25 @@ void main() {
     final container = makeContainer();
     final first = await _ready(container);
 
-    container.read(wordleGameProvider.notifier).changeWordLength(5);
+    container.read(wordleGameProvider.notifier).changeWordLength(6);
     final second = await _ready(container, afterRound: first.round);
 
-    expect(second.wordLength, 5);
-    expect(second.solution.length, 5);
+    expect(second.wordLength, 6);
+    expect(second.solution.length, 6);
     expect(second.round, greaterThan(first.round));
-    expect(container.read(wordleSettingsProvider).wordLength, 5);
+    expect(container.read(wordleSettingsProvider).wordLength, 6);
+  });
+
+  test('a longer word grants extra attempts', () async {
+    final container = makeContainer();
+    final first = await _ready(container);
+    expect(first.maxAttempts, kWordleMaxAttempts);
+
+    container.read(wordleGameProvider.notifier).changeWordLength(8);
+    final second = await _ready(container, afterRound: first.round);
+
+    expect(second.wordLength, 8);
+    expect(second.maxAttempts, kWordleMaxAttempts + 3);
   });
 
   test('hard mode is applied per guess, not per game', () async {

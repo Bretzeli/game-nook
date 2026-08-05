@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/layout/responsive_scale.dart';
 import '../../../../core/theme/app_theme_extension.dart';
-import '../domain/wordle_models.dart';
 import 'wordle_palette.dart';
 
 /// Slides in once the last row has finished flipping: a compliment on a win,
@@ -16,6 +15,7 @@ class WordleResultBanner extends StatelessWidget {
     required this.won,
     required this.solution,
     required this.attempts,
+    required this.maxAttempts,
     required this.onNewGame,
   });
 
@@ -23,6 +23,7 @@ class WordleResultBanner extends StatelessWidget {
   final bool won;
   final String solution;
   final int attempts;
+  final int maxAttempts;
   final VoidCallback onNewGame;
 
   @override
@@ -76,10 +77,7 @@ class WordleResultBanner extends StatelessWidget {
                     SizedBox(height: context.rs(1)),
                     won
                         ? Text(
-                            strings.wordleWinDetail(
-                              attempts,
-                              kWordleMaxAttempts,
-                            ),
+                            strings.wordleWinDetail(attempts, maxAttempts),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: decor.subtleTextColor,
                             ),
