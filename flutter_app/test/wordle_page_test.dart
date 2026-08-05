@@ -237,6 +237,62 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the winning row settles back into its own place', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openWordle(tester);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(WordleGrid)),
+      listen: false,
+    );
+    final controller = container.read(wordleGameProvider.notifier);
+    final game = container.read(wordleGameProvider);
+    final columns = game.wordLength;
+
+    Future<void> play(String word) async {
+      for (final letter in word.split('')) {
+        controller.typeLetter(letter);
+      }
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump(revealDurationFor(columns));
+      await _settle(tester);
+    }
+
+    // A wrong opener first, so the winning row has a scored row directly
+    // above it — the one it would overlap if it never came back down.
+    await play(
+      game.solutionPool.firstWhere(
+        (word) =>
+            word != game.solution && game.acceptedWords.contains(word),
+      ),
+    );
+    await play(game.solution);
+    // Let the bow and its shimmer run all the way out.
+    await tester.pump(const Duration(seconds: 2));
+    await _settle(tester);
+
+    // Painted position, not layout: the lift is a paint-time transform.
+    double rowTop(int row) =>
+        tester.getTopLeft(find.byType(WordleTile).at(row * columns)).dy;
+
+    // Two untouched rows give the true row pitch to compare against.
+    final pitch = rowTop(3) - rowTop(2);
+    expect(pitch, greaterThan(0));
+    expect(
+      rowTop(1) - rowTop(0),
+      closeTo(pitch, 0.5),
+      reason: 'the winning row must come to rest one full row below its '
+          'neighbour, not overlapping it',
+    );
+  });
+
   testWidgets('giving up writes the solution onto the board', (tester) async {
     tester.view.physicalSize = const Size(834, 1112);
     tester.view.devicePixelRatio = 1.0;

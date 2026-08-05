@@ -110,6 +110,12 @@ class WordleGrid extends StatelessWidget {
     );
 
     // The winning row takes a bow once it has finished flipping.
+    //
+    // The two slides stack as nested transforms and each one holds its end
+    // value once its own window is over, so they have to sum to zero for the
+    // row to come to rest in place: the second lowers by exactly what the
+    // first lifted (-0.14 + 0.14) instead of animating "back to zero", which
+    // would leave the first effect's lift applied for good.
     if (isRevealed &&
         game.phase == WordlePhase.won &&
         row == game.rows.length - 1) {
@@ -122,7 +128,7 @@ class WordleGrid extends StatelessWidget {
             curve: Curves.easeOutBack,
           )
           .then()
-          .slideY(begin: -0.14, end: 0, duration: 320.ms, curve: Curves.easeOut)
+          .slideY(begin: 0, end: 0.14, duration: 320.ms, curve: Curves.easeOut)
           .shimmer(
             delay: 60.ms,
             duration: 900.ms,
