@@ -85,6 +85,19 @@ class AppStrings {
 
   String get play => _isGerman ? 'Spielen' : 'Play';
 
+  String get close => _isGerman ? 'Schließen' : 'Close';
+
+  // --- Dictionary ---------------------------------------------------------
+
+  String get dictionaryLabel => _isGerman ? 'Wörterbuch' : 'Dictionary';
+
+  String dictionaryExplainTooltip(String word) =>
+      _isGerman ? 'Was bedeutet $word?' : 'What does $word mean?';
+
+  String get dictionarySynonyms => _isGerman ? 'Synonyme' : 'Synonyms';
+
+  String get dictionaryAntonyms => _isGerman ? 'Gegenwörter' : 'Antonyms';
+
   // --- Wordle -------------------------------------------------------------
 
   String get wordleLengthLabel => _isGerman ? 'Länge' : 'Length';

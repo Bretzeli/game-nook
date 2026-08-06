@@ -365,6 +365,7 @@ class _WordlePageState extends ConsumerState<WordlePage>
       child = WordleResultBanner(
         key: ValueKey('result-${game.round}'),
         strings: strings,
+        languageCode: game.languageCode,
         won: game.phase == WordlePhase.won,
         solution: game.solution,
         attempts: game.attemptsUsed,
