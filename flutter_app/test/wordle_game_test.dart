@@ -135,7 +135,15 @@ void main() {
     expect(container.read(wordleGameProvider).typedWord, 'CRONE');
     expect(container.read(wordleGameProvider).cursor, 3);
 
-    // Backspace clears the slot left of the caret, like a text field.
+    // Backspace clears whichever slot is currently selected (the one under
+    // the caret), not the one before it.
+    controller.backspace();
+    expect(container.read(wordleGameProvider).input[3], '');
+    expect(container.read(wordleGameProvider).input[2], 'O');
+    expect(container.read(wordleGameProvider).cursor, 3);
+
+    // With nothing occupying the caret slot, backspace falls back to
+    // auto-selecting and clearing the last filled letter.
     controller.backspace();
     expect(container.read(wordleGameProvider).input[2], '');
     expect(container.read(wordleGameProvider).cursor, 2);
