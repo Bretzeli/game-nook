@@ -204,10 +204,7 @@ class SudokuResultBanner extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.rs(14)),
-              GameActionButton(
-                label: strings.sudokuNewGame,
-                onTap: onNewGame,
-              ),
+              GameActionButton(label: strings.sudokuNewGame, onTap: onNewGame),
             ],
           ),
         )

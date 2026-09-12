@@ -47,34 +47,41 @@ void main() {
   });
 
   group('symbols', () {
-    test('there is one glyph per value of the largest board', () {
-      expect(kSudokuSymbols.length, SudokuSize.twentyFive.length);
-      expect(kSudokuSymbols.split('').toSet().length, kSudokuSymbols.length);
+    test('a value is shown as the number it is', () {
+      expect(sudokuSymbol(1), '1');
+      expect(sudokuSymbol(9), '9');
+      expect(sudokuSymbol(10), '10');
+      expect(sudokuSymbol(25), '25');
     });
 
-    test('no glyph can be taken for another', () {
-      // The board never shows a 0, so O is safe, but 1 and I are not.
-      expect(kSudokuSymbols.contains('I'), isFalse);
-      expect(kSudokuSymbols.contains('0'), isFalse);
+    test('the widest value says how much room a board has to leave', () {
+      expect(sudokuSymbolWidth(4), 1);
+      expect(sudokuSymbolWidth(9), 1);
+      expect(sudokuSymbolWidth(12), 2);
+      expect(sudokuSymbolWidth(25), 2);
     });
 
-    test('a value survives the round trip through its glyph', () {
-      for (var value = 1; value <= kSudokuSymbols.length; value++) {
+    test('a value survives the round trip through its symbol', () {
+      for (var value = 1; value <= SudokuSize.twentyFive.length; value++) {
         expect(sudokuValueOf(sudokuSymbol(value), 25), value);
       }
     });
 
-    test('a glyph the board has no value for is refused', () {
-      // A nine-value board knows nothing of the letters.
-      expect(sudokuValueOf('A', 9), isNull);
-      expect(sudokuValueOf('A', 12), 10);
-      expect(sudokuValueOf('I', 25), isNull);
-      expect(sudokuValueOf('!', 9), isNull);
-      expect(sudokuValueOf('12', 25), isNull);
+    test('a number the board has no value for is refused', () {
+      expect(sudokuValueOf('10', 9), isNull);
+      expect(sudokuValueOf('10', 12), 10);
+      expect(sudokuValueOf('26', 25), isNull);
+      expect(sudokuValueOf('0', 9), isNull);
+      expect(sudokuValueOf('A', 25), isNull);
+      expect(sudokuValueOf('', 9), isNull);
     });
 
-    test('lower case reads the same as upper case', () {
-      expect(sudokuValueOf('a', 16), sudokuValueOf('A', 16));
+    test('a typed key is read one digit at a time', () {
+      expect(sudokuDigitOf('0'), 0);
+      expect(sudokuDigitOf('7'), 7);
+      expect(sudokuDigitOf('A'), isNull);
+      expect(sudokuDigitOf('12'), isNull);
+      expect(sudokuDigitOf(''), isNull);
     });
   });
 

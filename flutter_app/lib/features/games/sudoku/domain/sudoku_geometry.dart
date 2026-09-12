@@ -90,9 +90,7 @@ class SudokuGeometry {
       for (var column = 0; column < length; column++)
         [for (var row = 0; row < length; row++) row * length + column],
     ];
-    final boxes = [
-      for (var box = 0; box < length; box++) <int>[],
-    ];
+    final boxes = [for (var box = 0; box < length; box++) <int>[]];
     for (var index = 0; index < size.cellCount; index++) {
       boxes[boxOf[index]].add(index);
     }

@@ -100,9 +100,10 @@ void _seedDiagonal(SudokuGeometry geometry, List<int> grid, Random random) {
     for (var row = 0; row < size.boxHeight; row++) {
       for (var column = 0; column < size.boxWidth; column++) {
         grid[geometry.indexOf(
-          box * size.boxHeight + row,
-          box * size.boxWidth + column,
-        )] = values[slot++];
+              box * size.boxHeight + row,
+              box * size.boxWidth + column,
+            )] =
+            values[slot++];
       }
     }
   }
@@ -187,8 +188,7 @@ List<int> _shuffledLines(int groupCount, int groupSize, Random random) {
 
   return [
     for (final group in groups)
-      ...[
-        for (var line = 0; line < groupSize; line++) group * groupSize + line,
-      ]..shuffle(random),
+      ...[for (var line = 0; line < groupSize; line++) group * groupSize + line]
+        ..shuffle(random),
   ];
 }

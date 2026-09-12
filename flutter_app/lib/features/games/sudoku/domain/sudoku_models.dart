@@ -37,25 +37,34 @@ enum SudokuSize {
   );
 }
 
-/// The glyph shown for each value, one per cell.
+/// What a cell shows for [value], which is 1-based as values are everywhere
+/// here: the number itself, all the way up to 25.
 ///
-/// Values past nine continue into letters rather than into two-digit numbers:
-/// a 25×25 board gives a cell a fraction of the width a phone has, and a
-/// single glyph is the only thing that stays readable there — let alone as one
-/// of twenty-five pencil marks inside that same cell. `I` is skipped so that
-/// no letter can be mistaken for the digit 1.
-const String kSudokuSymbols = '123456789ABCDEFGHJKLMNOPQ';
+/// Boards past nine values carry two-digit numbers rather than switching to
+/// letters. Everything that draws a value — the cells, the pencil marks, the
+/// keys — asks [sudokuSymbolWidth] how wide the widest one gets and sizes
+/// itself to that, so the extra digit costs room rather than legibility.
+String sudokuSymbol(int value) => '$value';
 
-/// The glyph for [value], which is 1-based as values are everywhere here.
-String sudokuSymbol(int value) => kSudokuSymbols[value - 1];
+/// Characters the widest value of a board of [length] takes.
+int sudokuSymbolWidth(int length) => length >= 10 ? 2 : 1;
 
-/// The value [symbol] stands for, or `null` when it stands for nothing on a
-/// board of [length] values. Lower case is accepted — it is what a keyboard
-/// sends unless shift is held, and shift means something else here.
-int? sudokuValueOf(String symbol, int length) {
-  if (symbol.length != 1) return null;
-  final value = kSudokuSymbols.indexOf(symbol.toUpperCase()) + 1;
+/// The value [text] stands for, or `null` when it stands for nothing on a board
+/// of [length] values.
+int? sudokuValueOf(String text, int length) {
+  final value = int.tryParse(text);
+  if (value == null) return null;
   return value >= 1 && value <= length ? value : null;
+}
+
+/// The digit [character] is, or `null` when it is not a single digit.
+///
+/// Typing a value is done a digit at a time, so this is what a key press turns
+/// into before the board works out which value the digits add up to.
+int? sudokuDigitOf(String character) {
+  if (character.length != 1) return null;
+  final digit = character.codeUnitAt(0) - 0x30;
+  return digit >= 0 && digit <= 9 ? digit : null;
 }
 
 /// How thoroughly a puzzle is dug out, and by what reasoning it can be solved.

@@ -1,16 +1,18 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/layout/responsive_scale.dart';
 import '../domain/sudoku_geometry.dart';
+import '../domain/sudoku_models.dart';
 import '../state/sudoku_game_state.dart';
 import 'sudoku_cell_view.dart';
 import 'sudoku_palette.dart';
 
 /// The largest a single cell is allowed to get, so that a 4×4 board on a desktop
 /// stays a sudoku rather than four enormous tiles.
-const double _kMaxCellSize = 74;
+const double kSudokuMaxCellSize = 74;
 
 /// The board: a square grid of cells with the box borders drawn over them.
 class SudokuBoardView extends StatelessWidget {
@@ -18,10 +20,19 @@ class SudokuBoardView extends StatelessWidget {
     super.key,
     required this.game,
     required this.onCellTap,
+    this.zoom = 1,
   });
 
   final SudokuGameState game;
   final ValueChanged<int> onCellTap;
+
+  /// How much bigger than "fits the screen" to draw the board.
+  ///
+  /// This grows the cells themselves rather than scaling a picture of them, so
+  /// zooming into a 25×25 board brings its pencil marks back rather than
+  /// magnifying the dot that stands in for them. Whatever no longer fits is
+  /// reached by dragging the board about.
+  final double zoom;
 
   @override
   Widget build(BuildContext context) {
@@ -31,64 +42,81 @@ class SudokuBoardView extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final available = math.min(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
+        final available = math.min(constraints.maxWidth, constraints.maxHeight);
         // Whole pixels per cell: it keeps the grid lines crisp, and it means the
         // cells can never add up to more than the room they were given.
-        final cellSize = math.max(
-          1.0,
-          math
-              .min(available / length, context.rs(_kMaxCellSize))
-              .floorToDouble(),
-        );
+        final fitted = math
+            .min(available / length, context.rs(kSudokuMaxCellSize))
+            .floorToDouble();
+        final cellSize = math.max(1.0, (fitted * zoom).floorToDouble());
         final side = cellSize * length;
 
         final selected = game.selected;
         final selectedValue = game.selectedCell?.value ?? 0;
 
-        return Center(
-          child: SizedBox(
-            width: side,
-            height: side,
-            child: Stack(
-              children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var row = 0; row < length; row++)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var column = 0; column < length; column++)
-                            _buildCell(
-                              geometry: geometry,
-                              palette: palette,
-                              index: geometry.indexOf(row, column),
-                              selected: selected,
-                              selectedValue: selectedValue,
-                              cellSize: cellSize,
-                            ),
-                        ],
-                      ),
-                  ],
-                ),
-                // Painted over the cells in one go, so a shared border is one
-                // line rather than two cells' worth of edges.
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: _SudokuGridPainter(
-                        geometry: geometry,
-                        cellSize: cellSize,
-                        line: palette.gridLine,
-                        boxLine: palette.boxLine,
-                      ),
+        final board = SizedBox(
+          width: side,
+          height: side,
+          child: Stack(
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var row = 0; row < length; row++)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var column = 0; column < length; column++)
+                          _buildCell(
+                            geometry: geometry,
+                            palette: palette,
+                            index: geometry.indexOf(row, column),
+                            selected: selected,
+                            selectedValue: selectedValue,
+                            cellSize: cellSize,
+                          ),
+                      ],
+                    ),
+                ],
+              ),
+              // Painted over the cells in one go, so a shared border is one
+              // line rather than two cells' worth of edges.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _SudokuGridPainter(
+                      geometry: geometry,
+                      cellSize: cellSize,
+                      line: palette.gridLine,
+                      boxLine: palette.boxLine,
                     ),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        );
+
+        // Only once it has been zoomed past what the screen holds does the
+        // board need to be draggable; before that the scroll views would have
+        // nowhere to go anyway.
+        if (side <= constraints.maxWidth && side <= constraints.maxHeight) {
+          return Center(child: board);
+        }
+        // A zoomed board is dragged about to reach the rest of it, and a mouse
+        // has to be able to do that as well as a finger — Flutter leaves mice
+        // out of dragging by default, on the grounds that a desktop has scroll
+        // bars, which this has not.
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: PointerDeviceKind.values.toSet(),
+            scrollbars: false,
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: board,
             ),
           ),
         );
@@ -112,6 +140,7 @@ class SudokuBoardView extends StatelessWidget {
       size: cellSize,
       noteColumns: geometry.size.boxWidth,
       noteRows: geometry.size.boxHeight,
+      symbolWidth: sudokuSymbolWidth(geometry.length),
       palette: palette,
       selected: isSelected,
       inSelectedUnit:

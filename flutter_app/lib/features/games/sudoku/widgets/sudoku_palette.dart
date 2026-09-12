@@ -86,7 +86,10 @@ class SudokuPalette {
             Colors.black.withValues(alpha: 0.22),
             decor.cardColor,
           )
-        : Color.alphaBlend(Colors.white.withValues(alpha: 0.55), decor.cardColor);
+        : Color.alphaBlend(
+            Colors.white.withValues(alpha: 0.55),
+            decor.cardColor,
+          );
 
     return SudokuPalette(
       cellBackground: cellBackground,
@@ -113,7 +116,10 @@ class SudokuPalette {
       givenText: text,
       entryText: decor.accentColor,
       revealedText: decor.subtleTextColor,
-      noteText: decor.subtleTextColor.withValues(alpha: 0.85),
+      // Pencil marks are small enough on a phone that they need every bit of
+      // contrast the muted colour has; what tells them apart from a value is
+      // their size and where they sit, not how faint they are.
+      noteText: decor.subtleTextColor,
       correct: isDark ? const Color(0xFF4C9A57) : const Color(0xFF3F8A4C),
       wrong: isDark ? const Color(0xFFD4635C) : const Color(0xFFC0433C),
       keyBackground: isDark

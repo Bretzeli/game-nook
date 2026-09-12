@@ -3,13 +3,7 @@ import 'package:flutter/material.dart';
 import '../../features/games/sudoku/domain/sudoku_models.dart';
 import '../theme/app_theme_variant.dart';
 
-enum GameId {
-  wordle,
-  spellingBee,
-  sudoku,
-  dontWordle,
-  wormdle,
-}
+enum GameId { wordle, spellingBee, sudoku, dontWordle, wormdle }
 
 class AppStrings {
   const AppStrings(this._locale);
@@ -22,8 +16,7 @@ class AppStrings {
 
   String get homeTitle => _isGerman ? 'Game Nook' : 'Game Nook';
 
-  String get homePickGame =>
-      _isGerman ? 'Wähle ein Spiel' : 'Pick a game';
+  String get homePickGame => _isGerman ? 'Wähle ein Spiel' : 'Pick a game';
 
   String get comingSoon => _isGerman ? 'Demnächst' : 'Coming soon';
 
@@ -60,21 +53,26 @@ class AppStrings {
 
   String gameDescription(GameId game) {
     return switch (game) {
-      GameId.wordle => _isGerman
-          ? 'Errate das Wort in sechs Versuchen'
-          : 'Guess the word in six tries',
-      GameId.spellingBee => _isGerman
-          ? 'Finde Wörter aus den gegebenen Buchstaben'
-          : 'Find words from the given letters',
-      GameId.sudoku => _isGerman
-          ? 'Fülle das Raster, ohne dich zu wiederholen'
-          : 'Fill the grid without repeating yourself',
-      GameId.dontWordle => _isGerman
-          ? 'Vermeide das richtige Wort'
-          : 'Avoid guessing the correct word',
-      GameId.wormdle => _isGerman
-          ? 'Errate das Wort, indem du pro Runde einen Buchstaben änderst'
-          : 'Guess the word by changing one letter each round',
+      GameId.wordle =>
+        _isGerman
+            ? 'Errate das Wort in sechs Versuchen'
+            : 'Guess the word in six tries',
+      GameId.spellingBee =>
+        _isGerman
+            ? 'Finde Wörter aus den gegebenen Buchstaben'
+            : 'Find words from the given letters',
+      GameId.sudoku =>
+        _isGerman
+            ? 'Fülle das Raster, ohne dich zu wiederholen'
+            : 'Fill the grid without repeating yourself',
+      GameId.dontWordle =>
+        _isGerman
+            ? 'Vermeide das richtige Wort'
+            : 'Avoid guessing the correct word',
+      GameId.wormdle =>
+        _isGerman
+            ? 'Errate das Wort, indem du pro Runde einen Buchstaben änderst'
+            : 'Guess the word by changing one letter each round',
     };
   }
 
@@ -198,8 +196,7 @@ class AppStrings {
 
   String get spellingBeeNewGame => _isGerman ? 'Neues Spiel' : 'New game';
 
-  String get spellingBeeGiveUp =>
-      _isGerman ? 'Alle Wörter' : 'All words';
+  String get spellingBeeGiveUp => _isGerman ? 'Alle Wörter' : 'All words';
 
   String get spellingBeeGiveUpHint => _isGerman
       ? 'Beendet die Runde und zeigt jedes Wort'
@@ -215,8 +212,7 @@ class AppStrings {
 
   String get spellingBeeTierNormal => _isGerman ? 'Normal' : 'Normal';
 
-  String get spellingBeeTierDifficult =>
-      _isGerman ? 'Schwierig' : 'Difficult';
+  String get spellingBeeTierDifficult => _isGerman ? 'Schwierig' : 'Difficult';
 
   String get spellingBeeTierBonus => 'Bonus';
 
@@ -233,9 +229,8 @@ class AppStrings {
       : 'Words in neither list pay bonus points';
 
   /// The same thing in the space a phone has for it.
-  String get spellingBeeBonusHintShort => _isGerman
-      ? 'Seltene Wörter zählen extra'
-      : 'Rare words pay extra';
+  String get spellingBeeBonusHintShort =>
+      _isGerman ? 'Seltene Wörter zählen extra' : 'Rare words pay extra';
 
   String get spellingBeeWordsLabel => _isGerman ? 'Wörter' : 'Words';
 
@@ -260,9 +255,8 @@ class AppStrings {
       ? 'Der mittlere Buchstabe $letter fehlt'
       : 'Missing the middle letter $letter';
 
-  String spellingBeeBadLetter(String letter) => _isGerman
-      ? '$letter liegt nicht im Feld'
-      : '$letter is not in the hive';
+  String spellingBeeBadLetter(String letter) =>
+      _isGerman ? '$letter liegt nicht im Feld' : '$letter is not in the hive';
 
   String get spellingBeeNotAWord =>
       _isGerman ? 'Nicht in der Wortliste' : 'Not in the word list';
@@ -272,8 +266,7 @@ class AppStrings {
 
   String get spellingBeePangram => _isGerman ? 'Pangramm!' : 'Pangram!';
 
-  String get spellingBeeRareFind =>
-      _isGerman ? 'Seltener Fund!' : 'Rare find!';
+  String get spellingBeeRareFind => _isGerman ? 'Seltener Fund!' : 'Rare find!';
 
   /// A pat on the back that grows with what the word was worth.
   String spellingBeePraise(int points) {
@@ -344,8 +337,21 @@ class AppStrings {
   String get sudokuNotes => _isGerman ? 'Notizen' : 'Notes';
 
   String get sudokuNotesHint => _isGerman
-      ? 'Zahlen als Notiz eintragen — oder halte dafür die Umschalttaste'
-      : 'Write values as pencil marks — or hold shift to note just one';
+      ? 'Die Tasten schreiben Notizen statt Antworten — oder halte die '
+            'Umschalttaste für eine einzelne Notiz'
+      : 'The keys write pencil marks instead of answers — or hold shift for a '
+            'single one';
+
+  String get sudokuZoomIn => _isGerman ? 'Vergrößern' : 'Zoom in';
+
+  String get sudokuZoomOut => _isGerman ? 'Verkleinern' : 'Zoom out';
+
+  /// How far the board is zoomed in, as a percentage.
+  String sudokuZoomLevel(double zoom) => '${(zoom * 100).round()}%';
+
+  String get sudokuZoomHint => _isGerman
+      ? 'Vergrößert das Raster — zieh es danach, um dich zu bewegen'
+      : 'Makes the grid bigger — drag it to move around';
 
   String get sudokuCheckCell => _isGerman ? 'Feld prüfen' : 'Check cell';
 
@@ -381,7 +387,8 @@ class AppStrings {
   String get sudokuNothingToCheck =>
       _isGerman ? 'Noch nichts eingetragen' : 'Nothing filled in yet';
 
-  String get sudokuCellCorrect => _isGerman ? 'Das stimmt' : 'That one is right';
+  String get sudokuCellCorrect =>
+      _isGerman ? 'Das stimmt' : 'That one is right';
 
   String get sudokuCellWrong =>
       _isGerman ? 'Das stimmt nicht' : 'That one is wrong';

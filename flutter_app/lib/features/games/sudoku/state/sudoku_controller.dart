@@ -243,9 +243,7 @@ class SudokuController extends Notifier<SudokuGameState> {
   /// Stores [cells] and ends the round when that filled the board in correctly.
   void _commit(List<SudokuCell> cells, {int? hintsUsed}) {
     final next = state.copyWith(cells: cells, hintsUsed: hintsUsed);
-    state = next.isComplete
-        ? next.copyWith(phase: SudokuPhase.solved)
-        : next;
+    state = next.isComplete ? next.copyWith(phase: SudokuPhase.solved) : next;
   }
 
   /// Takes [value] out of the pencil marks of every cell that can no longer

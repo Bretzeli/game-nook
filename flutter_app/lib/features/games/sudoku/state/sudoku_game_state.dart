@@ -102,8 +102,7 @@ class SudokuGameState {
   /// There is something the player filled in for a check to have an opinion
   /// about.
   bool get canCheckAll =>
-      isPlaying &&
-      cells.any((cell) => cell.isEditable && !cell.isEmpty);
+      isPlaying && cells.any((cell) => cell.isEditable && !cell.isEmpty);
 
   bool get canCheckSelected {
     final cell = selectedCell;

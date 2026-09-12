@@ -72,17 +72,6 @@ class SudokuToolbar extends ConsumerWidget {
           ),
         ),
         Tooltip(
-          message: strings.sudokuNotesHint,
-          child: GameChip(
-            icon: settings.notesMode
-                ? Icons.edit_note_rounded
-                : Icons.edit_outlined,
-            label: strings.sudokuNotes,
-            active: settings.notesMode,
-            onTap: controller.toggleNotesMode,
-          ),
-        ),
-        Tooltip(
           message: strings.sudokuCheckCellHint,
           child: GameChip(
             icon: Icons.spellcheck_rounded,

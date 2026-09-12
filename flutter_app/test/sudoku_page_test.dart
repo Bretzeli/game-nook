@@ -80,6 +80,20 @@ Future<void> _tapChip(WidgetTester tester, String label) async {
   await _advance(tester, 300);
 }
 
+/// Switches the board over to [label], e.g. "12x12" written with a times sign.
+Future<void> _chooseSize(WidgetTester tester, String label) async {
+  final current = _settings(tester).size;
+  await _tapChip(tester, '${current.length}×${current.length}');
+  await tester.tap(find.text(label).last);
+  await _advance(tester, 900);
+}
+
+Offset _keyAt(WidgetTester tester, int value) =>
+    tester.getTopLeft(find.byKey(ValueKey('sudoku-key-$value')));
+
+double _cellSize(WidgetTester tester) =>
+    tester.getSize(find.byType(SudokuCellView).first).width;
+
 void main() {
   for (final (name, size) in const [
     ('phone', Size(390, 844)),
@@ -98,10 +112,7 @@ void main() {
       expect(find.byType(SudokuKeypad), findsOneWidget);
       expect(find.byType(SudokuStatusLine), findsOneWidget);
       // One key per value, and the eraser.
-      expect(
-        find.byKey(const ValueKey('sudoku-key-1')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('sudoku-key-1')), findsOneWidget);
       expect(find.byKey(const ValueKey('sudoku-erase')), findsOneWidget);
     });
   }
@@ -118,8 +129,16 @@ void main() {
 
     expect(_game(tester).size, SudokuSize.twentyFive);
     expect(find.byType(SudokuCellView), findsNWidgets(625));
-    // Twenty-five values means letters as well as digits.
-    expect(find.byKey(const ValueKey('sudoku-key-25')), findsOneWidget);
+    // Values past nine are two-digit numbers, not letters.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('sudoku-key-25')),
+        matching: find.text('25'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('A'), findsNothing);
+    expect(find.text('Q'), findsNothing);
   });
 
   testWidgets('tapping a cell and a key fills it in', (tester) async {
@@ -234,6 +253,76 @@ void main() {
     // And back off again: the same key takes the note away.
     await _tapKey(tester, 2);
     expect(_game(tester).cells[index].notes, {7});
+  });
+
+  testWidgets('a pencil mark on a phone is a number, not a dot', (tester) async {
+    // The size of phone the board is tightest on: a classic sudoku here is
+    // twenty-eight pixels a cell, and the marks still have to be readable.
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+    final index = _firstEmpty(tester);
+    await _tapCell(tester, index);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit7);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump(const Duration(milliseconds: 60));
+
+    final mark = find.descendant(
+      of: find.byType(SudokuCellView).at(index),
+      matching: find.text('7'),
+    );
+    expect(mark, findsOneWidget, reason: 'the mark was left as a dot');
+
+    // And it fills the ninth of the cell it has to itself, rather than sitting
+    // in the middle of it at half the size.
+    final fontSize = tester.widget<Text>(mark).style!.fontSize!;
+    expect(fontSize, greaterThan(_cellSize(tester) / 3 * 0.7));
+  });
+
+  testWidgets('a mark with no room to be written out comes back on zoom', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+    await _chooseSize(tester, '16×16');
+
+    final index = _firstEmpty(tester);
+    await _tapCell(tester, index);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit7);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(_game(tester).cells[index].notes, {7});
+
+    // Sixteen two-digit marks will not go into a cell this size, so they are
+    // dotted in where their numbers would have been.
+    expect(
+      find.descendant(
+        of: find.byType(SudokuCellView).at(index),
+        matching: find.text('7'),
+      ),
+      findsNothing,
+    );
+
+    for (var step = 0; step < 3; step++) {
+      await tester.tap(find.byKey(const ValueKey('sudoku-zoom-in')));
+      await _advance(tester, 300);
+    }
+
+    expect(
+      find.descendant(
+        of: find.byType(SudokuCellView).at(index),
+        matching: find.text('7'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('checking a cell says whether it is right', (tester) async {
@@ -368,6 +457,175 @@ void main() {
 
     expect(_game(tester).round, 2);
     expect(_game(tester).selected, isNull);
+  });
+
+  testWidgets('the keys are a pad in the shape of the board box', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+
+    // A classic sudoku gets a three by three pad: 1..3 on one row, 4 under 1.
+    expect(_keyAt(tester, 1).dy, _keyAt(tester, 2).dy);
+    expect(_keyAt(tester, 2).dy, _keyAt(tester, 3).dy);
+    expect(_keyAt(tester, 4).dy, greaterThan(_keyAt(tester, 1).dy));
+    expect(_keyAt(tester, 4).dx, _keyAt(tester, 1).dx);
+    expect(_keyAt(tester, 7).dy, greaterThan(_keyAt(tester, 4).dy));
+
+    // And they are big enough to hit with a thumb.
+    expect(
+      tester.getSize(find.byKey(const ValueKey('sudoku-key-1'))).width,
+      greaterThanOrEqualTo(40),
+    );
+  });
+
+  testWidgets('notes and erase sit with the keys, under the board', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+
+    final boardBottom = tester.getBottomLeft(find.byType(SudokuBoardView)).dy;
+    final notes = tester.getTopLeft(find.byKey(const ValueKey('sudoku-notes')));
+
+    expect(find.byKey(const ValueKey('sudoku-notes')), findsOneWidget);
+    expect(notes.dy, greaterThan(boardBottom - 1));
+    expect(notes.dy, lessThan(_keyAt(tester, 1).dy));
+  });
+
+  testWidgets('a two-digit value goes in from its own key', (tester) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+    await _chooseSize(tester, '12×12');
+    expect(_game(tester).size, SudokuSize.twelve);
+
+    final index = _firstEmpty(tester);
+    await _tapCell(tester, index);
+    await _tapKey(tester, 12);
+
+    expect(_game(tester).cells[index].value, 12);
+    expect(
+      find.descendant(
+        of: find.byType(SudokuCellView).at(index),
+        matching: find.text('12'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('two digits typed together name one value', (tester) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+    await _chooseSize(tester, '12×12');
+
+    final index = _firstEmpty(tester);
+    await _tapCell(tester, index);
+
+    // The first digit is written at once, and the second replaces it with the
+    // pair the two of them make.
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(_game(tester).cells[index].value, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(_game(tester).cells[index].value, 12);
+
+    // Once the pair has timed out, the next digit stands on its own.
+    await tester.pump(const Duration(milliseconds: 1400));
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit3);
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(_game(tester).cells[index].value, 3);
+
+    // And a pair that would run off the end of the board is not a pair: a
+    // 12x12 has no 34, so the 4 stands alone.
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit4);
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(_game(tester).cells[index].value, 4);
+  });
+
+  testWidgets('two digits typed together make one pencil mark', (tester) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+    await _chooseSize(tester, '12×12');
+
+    final index = _firstEmpty(tester);
+    await _tapCell(tester, index);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit0);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump(const Duration(milliseconds: 80));
+
+    // The 1 pencilled in a moment ago comes back off when it becomes a 10.
+    expect(_game(tester).cells[index].notes, {10});
+  });
+
+  testWidgets('the bigger boards can be zoomed into', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+    // A classic sudoku reads well enough as it is.
+    expect(find.byKey(const ValueKey('sudoku-zoom-in')), findsNothing);
+
+    await _chooseSize(tester, '16×16');
+    expect(find.byKey(const ValueKey('sudoku-zoom-in')), findsOneWidget);
+    expect(find.text('100%'), findsOneWidget);
+
+    final before = _cellSize(tester);
+    await tester.tap(find.byKey(const ValueKey('sudoku-zoom-in')));
+    await _advance(tester, 400);
+
+    expect(find.text('150%'), findsOneWidget);
+    expect(_cellSize(tester), greaterThan(before));
+    // Zoomed past what the screen holds, the board is there to be dragged.
+    expect(
+      find.descendant(
+        of: find.byType(SudokuBoardView),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsWidgets,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('sudoku-zoom-out')));
+    await _advance(tester, 400);
+    expect(_cellSize(tester), before);
+  });
+
+  testWidgets('a new board starts back at its own size', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openSudoku(tester);
+    await _chooseSize(tester, '16×16');
+
+    await tester.tap(find.byKey(const ValueKey('sudoku-zoom-in')));
+    await _advance(tester, 400);
+    expect(find.text('150%'), findsOneWidget);
+
+    await _tapChip(tester, 'New game');
+    await _advance(tester, 900);
+    expect(find.text('100%'), findsOneWidget);
   });
 
   testWidgets('the board speaks German when the app does', (tester) async {
