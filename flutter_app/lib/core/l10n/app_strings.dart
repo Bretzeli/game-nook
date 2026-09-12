@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../features/games/sudoku/domain/sudoku_models.dart';
 import '../theme/app_theme_variant.dart';
 
 enum GameId {
@@ -66,8 +67,8 @@ class AppStrings {
           ? 'Finde Wörter aus den gegebenen Buchstaben'
           : 'Find words from the given letters',
       GameId.sudoku => _isGerman
-          ? 'Fülle das 9×9-Raster mit Zahlen'
-          : 'Fill the 9×9 grid with numbers',
+          ? 'Fülle das Raster, ohne dich zu wiederholen'
+          : 'Fill the grid without repeating yourself',
       GameId.dontWordle => _isGerman
           ? 'Vermeide das richtige Wort'
           : 'Avoid guessing the correct word',
@@ -312,6 +313,122 @@ class AppStrings {
       : 'The word list could not be loaded.';
 
   String get spellingBeeRetry => _isGerman ? 'Erneut versuchen' : 'Try again';
+
+  // --- Sudoku -------------------------------------------------------------
+
+  String get sudokuSizeLabel => _isGerman ? 'Größe' : 'Size';
+
+  String sudokuSizeName(SudokuSize size) => '${size.length}×${size.length}';
+
+  String get sudokuSizeHint => _isGerman
+      ? 'Eine andere Größe beginnt ein neues Spiel'
+      : 'A different size starts a new board';
+
+  String get sudokuDifficultyLabel =>
+      _isGerman ? 'Schwierigkeit' : 'Difficulty';
+
+  String sudokuDifficultyName(SudokuDifficulty difficulty) {
+    return switch (difficulty) {
+      SudokuDifficulty.easy => _isGerman ? 'Leicht' : 'Easy',
+      SudokuDifficulty.medium => _isGerman ? 'Mittel' : 'Medium',
+      SudokuDifficulty.hard => _isGerman ? 'Schwer' : 'Hard',
+    };
+  }
+
+  String get sudokuDifficultyHint => _isGerman
+      ? 'Jedes Rätsel ist ohne Raten lösbar — je schwerer, desto weniger '
+            'Zahlen sind vorgegeben'
+      : 'Every puzzle can be solved without guessing — the harder it is, the '
+            'fewer numbers you start with';
+
+  String get sudokuNotes => _isGerman ? 'Notizen' : 'Notes';
+
+  String get sudokuNotesHint => _isGerman
+      ? 'Zahlen als Notiz eintragen — oder halte dafür die Umschalttaste'
+      : 'Write values as pencil marks — or hold shift to note just one';
+
+  String get sudokuCheckCell => _isGerman ? 'Feld prüfen' : 'Check cell';
+
+  String get sudokuCheckCellHint => _isGerman
+      ? 'Sagt, ob im gewählten Feld die richtige Zahl steht'
+      : 'Says whether the selected cell holds the right value';
+
+  String get sudokuCheckAll => _isGerman ? 'Alles prüfen' : 'Check all';
+
+  String get sudokuCheckAllHint => _isGerman
+      ? 'Prüft jedes Feld, das du selbst gefüllt hast'
+      : 'Checks every cell you filled in yourself';
+
+  String get sudokuSolveCell => _isGerman ? 'Feld lösen' : 'Solve cell';
+
+  String get sudokuSolveCellHint => _isGerman
+      ? 'Trägt die richtige Zahl im gewählten Feld ein'
+      : 'Fills the right value into the selected cell';
+
+  String get sudokuNewGame => _isGerman ? 'Neues Spiel' : 'New game';
+
+  String get sudokuGiveUp => _isGerman ? 'Aufgeben' : 'Give up';
+
+  String get sudokuGiveUpHint => _isGerman
+      ? 'Beendet die Runde und füllt das Raster auf'
+      : 'Ends the round and fills the grid in';
+
+  String get sudokuErase => _isGerman ? 'Löschen' : 'Erase';
+
+  String get sudokuSelectCellFirst =>
+      _isGerman ? 'Wähle zuerst ein Feld' : 'Pick a cell first';
+
+  String get sudokuNothingToCheck =>
+      _isGerman ? 'Noch nichts eingetragen' : 'Nothing filled in yet';
+
+  String get sudokuCellCorrect => _isGerman ? 'Das stimmt' : 'That one is right';
+
+  String get sudokuCellWrong =>
+      _isGerman ? 'Das stimmt nicht' : 'That one is wrong';
+
+  String sudokuAllCorrect(int checked) => _isGerman
+      ? 'Alle $checked Felder stimmen'
+      : 'All $checked cells are right';
+
+  String sudokuWrongCount(int wrong) {
+    if (_isGerman) {
+      return wrong == 1 ? '1 Feld stimmt nicht' : '$wrong Felder stimmen nicht';
+    }
+    return wrong == 1 ? '1 cell is wrong' : '$wrong cells are wrong';
+  }
+
+  String get sudokuRemainingLabel => _isGerman ? 'Übrig' : 'Left';
+
+  String get sudokuSolvedTitle => _isGerman ? 'Gelöst!' : 'Solved!';
+
+  String get sudokuRevealedTitle => _isGerman ? 'Runde beendet' : 'Round over';
+
+  /// The board and how much help was taken, under the result.
+  String sudokuResultDetail(
+    SudokuSize size,
+    SudokuDifficulty difficulty,
+    int solvedForYou,
+  ) {
+    final board =
+        '${sudokuSizeName(size)} · ${sudokuDifficultyName(difficulty)}';
+    if (solvedForYou == 0) {
+      return _isGerman ? '$board · ohne Hilfe' : '$board · no help taken';
+    }
+    if (_isGerman) {
+      return solvedForYou == 1
+          ? '$board · 1 Feld gelöst'
+          : '$board · $solvedForYou Felder gelöst';
+    }
+    return solvedForYou == 1
+        ? '$board · 1 cell solved for you'
+        : '$board · $solvedForYou cells solved for you';
+  }
+
+  String get sudokuLoadFailed => _isGerman
+      ? 'Das Rätsel konnte nicht erstellt werden.'
+      : 'The puzzle could not be created.';
+
+  String get sudokuRetry => _isGerman ? 'Erneut versuchen' : 'Try again';
 
   String _ordinal(int n) {
     if (n % 100 >= 11 && n % 100 <= 13) return '${n}th';

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/layout/responsive_scale.dart';
 import '../../../../core/theme/app_theme_extension.dart';
+import '../../../../widgets/game_action_button.dart';
 import 'wordle_palette.dart';
 
 /// Slides in once the last row has finished flipping: a compliment on a win,
@@ -87,7 +88,7 @@ class WordleResultBanner extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.rs(14)),
-              _NewGameButton(label: strings.wordleNewGame, onTap: onNewGame),
+              GameActionButton(label: strings.wordleNewGame, onTap: onNewGame),
             ],
           ),
         )
@@ -137,57 +138,6 @@ class _Solution extends StatelessWidget {
               .slideX(begin: 0.12, end: 0, curve: Curves.easeOut),
         ),
       ],
-    );
-  }
-}
-
-class _NewGameButton extends StatefulWidget {
-  const _NewGameButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<_NewGameButton> createState() => _NewGameButtonState();
-}
-
-class _NewGameButtonState extends State<_NewGameButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final decor = context.decor;
-    final theme = Theme.of(context);
-    final filled = decor.buttonStyle != AppButtonStyle.outlined;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: EdgeInsets.symmetric(
-            horizontal: context.rs(14),
-            vertical: context.rs(9),
-          ),
-          decoration: BoxDecoration(
-            color: filled
-                ? decor.accentColor.withValues(alpha: _hovered ? 1 : 0.85)
-                : decor.accentColor.withValues(alpha: _hovered ? 0.2 : 0.1),
-            borderRadius: decor.buttonRadius,
-            border: Border.all(color: decor.accentColor, width: 1),
-          ),
-          child: Text(
-            widget.label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: filled ? Colors.white : decor.accentColor,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
