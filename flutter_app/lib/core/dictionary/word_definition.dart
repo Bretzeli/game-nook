@@ -47,6 +47,12 @@ class WordDefinition {
   final List<String> synonyms;
   final List<String> antonyms;
 
+  /// Whether the entry actually says anything. Some entries — abbreviations
+  /// mostly — exist with every field empty, and those are not worth offering
+  /// to the player as an explanation.
+  bool get hasExplanation =>
+      meanings.isNotEmpty || synonyms.isNotEmpty || antonyms.isNotEmpty;
+
   factory WordDefinition.fromJson(String word, Map<String, dynamic> json) {
     final meanings = json['MEANINGS'] as List? ?? const [];
     return WordDefinition(

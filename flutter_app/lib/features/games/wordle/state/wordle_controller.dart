@@ -91,8 +91,19 @@ class WordleGameController extends Notifier<WordleGameState> {
 
   void backspace() {
     if (!state.isPlaying) return;
-    final target = state.cursor > 0 ? state.cursor - 1 : 0;
     final input = [...state.input];
+
+    // A tapped-on letter is "selected" at the cursor itself; deleting should
+    // clear that slot in place rather than the one before it.
+    if (state.cursor < state.wordLength && input[state.cursor].isNotEmpty) {
+      input[state.cursor] = '';
+      state = state.copyWith(input: input, cursor: state.cursor);
+      return;
+    }
+
+    // Nothing occupies the cursor slot (the normal post-typing position), so
+    // fall back to auto-selecting and clearing the last filled letter.
+    final target = state.cursor > 0 ? state.cursor - 1 : 0;
     input[target] = '';
     state = state.copyWith(input: input, cursor: target);
   }
