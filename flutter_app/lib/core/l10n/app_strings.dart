@@ -193,6 +193,126 @@ class AppStrings {
 
   String get wordleRetry => _isGerman ? 'Erneut versuchen' : 'Try again';
 
+  // --- Spelling Bee -------------------------------------------------------
+
+  String get spellingBeeNewGame => _isGerman ? 'Neues Spiel' : 'New game';
+
+  String get spellingBeeGiveUp =>
+      _isGerman ? 'Alle Wörter' : 'All words';
+
+  String get spellingBeeGiveUpHint => _isGerman
+      ? 'Beendet die Runde und zeigt jedes Wort'
+      : 'Ends the round and reveals every word';
+
+  String get spellingBeeShuffle => _isGerman ? 'Mischen' : 'Shuffle';
+
+  String get spellingBeeDelete => _isGerman ? 'Löschen' : 'Delete';
+
+  String get spellingBeeEnter => _isGerman ? 'Eingabe' : 'Enter';
+
+  String get spellingBeeScoreLabel => _isGerman ? 'Punkte' : 'Points';
+
+  String get spellingBeeTierNormal => _isGerman ? 'Normal' : 'Normal';
+
+  String get spellingBeeTierDifficult =>
+      _isGerman ? 'Schwierig' : 'Difficult';
+
+  String get spellingBeeTierBonus => 'Bonus';
+
+  String get spellingBeeNormalHint => _isGerman
+      ? 'Alltägliche Wörter — die gelbe Leiste'
+      : 'Everyday words — the yellow bar';
+
+  String get spellingBeeDifficultHint => _isGerman
+      ? 'Seltenere Wörter aus dem Wörterbuch — die silberne Leiste'
+      : 'Rarer dictionary words — the silver bar';
+
+  String get spellingBeeBonusHint => _isGerman
+      ? 'Wörter aus keiner der beiden Listen geben Bonuspunkte'
+      : 'Words in neither list pay bonus points';
+
+  /// The same thing in the space a phone has for it.
+  String get spellingBeeBonusHintShort => _isGerman
+      ? 'Seltene Wörter zählen extra'
+      : 'Rare words pay extra';
+
+  String get spellingBeeWordsLabel => _isGerman ? 'Wörter' : 'Words';
+
+  String spellingBeeFoundOf(int found, int total) =>
+      _isGerman ? '$found von $total' : '$found of $total';
+
+  String spellingBeeRareFinds(int count) {
+    if (_isGerman) {
+      return count == 1 ? '1 seltener Fund' : '$count seltene Funde';
+    }
+    return count == 1 ? '1 rare find' : '$count rare finds';
+  }
+
+  String get spellingBeeNoWordsYet =>
+      _isGerman ? 'Noch keine Wörter' : 'No words yet';
+
+  String spellingBeeTooShort(int minimum) => _isGerman
+      ? 'Mindestens $minimum Buchstaben'
+      : 'At least $minimum letters';
+
+  String spellingBeeMissingCenter(String letter) => _isGerman
+      ? 'Der mittlere Buchstabe $letter fehlt'
+      : 'Missing the middle letter $letter';
+
+  String spellingBeeBadLetter(String letter) => _isGerman
+      ? '$letter liegt nicht im Feld'
+      : '$letter is not in the hive';
+
+  String get spellingBeeNotAWord =>
+      _isGerman ? 'Nicht in der Wortliste' : 'Not in the word list';
+
+  String get spellingBeeAlreadyFound =>
+      _isGerman ? 'Schon gefunden' : 'Already found';
+
+  String get spellingBeePangram => _isGerman ? 'Pangramm!' : 'Pangram!';
+
+  String get spellingBeeRareFind =>
+      _isGerman ? 'Seltener Fund!' : 'Rare find!';
+
+  /// A pat on the back that grows with what the word was worth.
+  String spellingBeePraise(int points) {
+    if (_isGerman) {
+      if (points >= 14) return 'Sensationell!';
+      if (points >= 10) return 'Ausgezeichnet!';
+      if (points >= 7) return 'Super!';
+      if (points >= 5) return 'Stark!';
+      return 'Gut!';
+    }
+    if (points >= 14) return 'Amazing!';
+    if (points >= 10) return 'Excellent!';
+    if (points >= 7) return 'Great!';
+    if (points >= 5) return 'Nice!';
+    return 'Good!';
+  }
+
+  String spellingBeeTierComplete(String tier) =>
+      _isGerman ? '$tier komplett!' : '$tier complete!';
+
+  String get spellingBeeCompleteTitle =>
+      _isGerman ? 'Alle Wörter gefunden!' : 'Every word found!';
+
+  String get spellingBeeRevealedTitle =>
+      _isGerman ? 'Runde beendet' : 'Round over';
+
+  String spellingBeeScoreDetail(int points, int found, int total) => _isGerman
+      ? '$points Punkte · $found von $total Wörtern'
+      : '$points points · $found of $total words';
+
+  String get spellingBeeClose => _isGerman ? 'Schließen' : 'Close';
+
+  String get spellingBeeMissedLabel => _isGerman ? 'Verpasst' : 'Missed';
+
+  String get spellingBeeLoadFailed => _isGerman
+      ? 'Die Wortliste konnte nicht geladen werden.'
+      : 'The word list could not be loaded.';
+
+  String get spellingBeeRetry => _isGerman ? 'Erneut versuchen' : 'Try again';
+
   String _ordinal(int n) {
     if (n % 100 >= 11 && n % 100 <= 13) return '${n}th';
     return switch (n % 10) {

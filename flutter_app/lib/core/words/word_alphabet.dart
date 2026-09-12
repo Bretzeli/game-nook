@@ -4,7 +4,7 @@
 /// to upper case so that comparisons stay a plain string equality check. All
 /// supported letters live in the Unicode BMP, so a normalised word can safely
 /// be indexed with `word[i]`.
-abstract final class WordleAlphabet {
+abstract final class WordAlphabet {
   static const _englishLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   static const _germanLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜß';
 

@@ -8,7 +8,7 @@ import '../../../../core/theme/app_theme_extension.dart';
 import '../domain/wordle_models.dart';
 import '../state/wordle_controller.dart';
 import '../state/wordle_settings.dart';
-import 'wordle_chip.dart';
+import '../../../../widgets/game_chip.dart';
 
 /// Word length, difficulty, hard mode and the two game actions.
 class WordleToolbar extends ConsumerWidget {
@@ -62,7 +62,7 @@ class WordleToolbar extends ConsumerWidget {
                 disabledHint: strings.wordleLengthUnavailable,
               ),
           ],
-          child: WordleChip(
+          child: GameChip(
             icon: Icons.straighten_rounded,
             label: strings.wordleLetterCount(settings.wordLength),
             trailingIcon: Icons.expand_more_rounded,
@@ -96,7 +96,7 @@ class WordleToolbar extends ConsumerWidget {
               ),
             ),
           ],
-          child: WordleChip(
+          child: GameChip(
             icon: Icons.local_library_rounded,
             label: _difficultyLabel(strings, settings.difficulty),
             trailingIcon: Icons.expand_more_rounded,
@@ -104,7 +104,7 @@ class WordleToolbar extends ConsumerWidget {
         ),
         Tooltip(
           message: strings.wordleHardModeHint,
-          child: WordleChip(
+          child: GameChip(
             icon: settings.hardMode
                 ? Icons.lock_rounded
                 : Icons.lock_open_rounded,
@@ -115,7 +115,7 @@ class WordleToolbar extends ConsumerWidget {
         ),
         Tooltip(
           message: strings.wordleHintDescription,
-          child: WordleChip(
+          child: GameChip(
             icon: Icons.lightbulb_outline_rounded,
             label: strings.wordleHint,
             badge: '$hintsUsed',
@@ -123,12 +123,12 @@ class WordleToolbar extends ConsumerWidget {
             onTap: canHint ? onHint : null,
           ),
         ),
-        WordleChip(
+        GameChip(
           icon: Icons.refresh_rounded,
           label: strings.wordleNewGame,
           onTap: controller.newGame,
         ),
-        WordleChip(
+        GameChip(
           icon: Icons.flag_rounded,
           label: strings.wordleGiveUp,
           enabled: canGiveUp,

@@ -6,6 +6,7 @@ import '../theme/app_theme_extension.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/app_strings_provider.dart';
 import '../../features/games/game_placeholder_page.dart';
+import '../../features/games/spelling_bee/spelling_bee_page.dart';
 import '../../features/games/wordle/wordle_page.dart';
 import '../../features/home/home_page.dart';
 import '../../widgets/app_nav_bar.dart';
@@ -78,9 +79,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/spelling-bee',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: GamePlaceholderPage(gameId: GameId.spellingBee),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SpellingBeePage()),
           ),
           GoRoute(
             path: '/sudoku',

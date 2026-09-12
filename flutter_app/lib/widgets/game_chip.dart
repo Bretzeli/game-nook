@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/layout/responsive_scale.dart';
-import '../../../../core/theme/app_theme_extension.dart';
+import '../core/layout/responsive_scale.dart';
+import '../core/theme/app_theme_extension.dart';
 
 /// Pill-shaped control in the same style as the nav bar selectors.
-class WordleChip extends StatefulWidget {
-  const WordleChip({
+class GameChip extends StatefulWidget {
+  const GameChip({
     super.key,
     required this.label,
     this.icon,
@@ -31,10 +31,10 @@ class WordleChip extends StatefulWidget {
   final bool enabled;
 
   @override
-  State<WordleChip> createState() => _WordleChipState();
+  State<GameChip> createState() => _GameChipState();
 }
 
-class _WordleChipState extends State<WordleChip> {
+class _GameChipState extends State<GameChip> {
   bool _hovered = false;
 
   @override

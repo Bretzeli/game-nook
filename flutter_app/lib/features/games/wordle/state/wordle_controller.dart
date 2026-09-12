@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/l10n/locale_notifier.dart';
 import '../data/wordle_word_repository.dart';
-import '../domain/wordle_alphabet.dart';
+import '../../../../core/words/word_alphabet.dart';
 import '../domain/wordle_models.dart';
 import '../domain/wordle_rules.dart';
 import 'wordle_game_state.dart';
@@ -81,7 +81,7 @@ class WordleGameController extends Notifier<WordleGameState> {
 
   void typeLetter(String character) {
     if (!state.isPlaying || state.cursor >= state.wordLength) return;
-    final letter = WordleAlphabet.normalizeChar(character, state.languageCode);
+    final letter = WordAlphabet.normalizeChar(character, state.languageCode);
     if (letter == null) return;
 
     final input = [...state.input];

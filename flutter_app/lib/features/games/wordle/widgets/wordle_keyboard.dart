@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme_extension.dart';
-import '../domain/wordle_alphabet.dart';
+import '../../../../core/words/word_alphabet.dart';
 import '../domain/wordle_models.dart';
 import 'wordle_palette.dart';
 
@@ -31,7 +31,7 @@ class WordleKeyboard extends StatelessWidget {
   static const _qwertz = ['QWERTZUIOPÜ', 'ASDFGHJKLÖÄ', 'YXCVBNMß'];
 
   List<String> get _layout =>
-      WordleAlphabet.isGerman(languageCode) ? _qwertz : _qwerty;
+      WordAlphabet.isGerman(languageCode) ? _qwertz : _qwerty;
 
   @override
   Widget build(BuildContext context) {

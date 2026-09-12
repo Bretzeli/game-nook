@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_app/features/games/wordle/domain/wordle_alphabet.dart';
+import 'package:flutter_app/core/words/word_alphabet.dart';
 import 'package:flutter_app/features/games/wordle/domain/wordle_models.dart';
 import 'package:flutter_app/features/games/wordle/domain/wordle_rules.dart';
 
@@ -222,28 +222,28 @@ void main() {
     });
   });
 
-  group('WordleAlphabet', () {
+  group('WordAlphabet', () {
     test('upper-cases and keeps German letters single-width', () {
-      expect(WordleAlphabet.normalizeWord('gruß', 'de'), 'GRUß');
-      expect(WordleAlphabet.normalizeWord('Käfer', 'de'), 'KÄFER');
-      expect(WordleAlphabet.normalizeWord('Käfer', 'de')?.length, 5);
+      expect(WordAlphabet.normalizeWord('gruß', 'de'), 'GRUß');
+      expect(WordAlphabet.normalizeWord('Käfer', 'de'), 'KÄFER');
+      expect(WordAlphabet.normalizeWord('Käfer', 'de')?.length, 5);
     });
 
     test('rejects entries that are not plain words', () {
-      expect(WordleAlphabet.normalizeWord('z.B.', 'de'), isNull);
-      expect(WordleAlphabet.normalizeWord('US-Dollar', 'de'), isNull);
-      expect(WordleAlphabet.normalizeWord('', 'de'), isNull);
-      expect(WordleAlphabet.normalizeWord('café', 'en'), isNull);
+      expect(WordAlphabet.normalizeWord('z.B.', 'de'), isNull);
+      expect(WordAlphabet.normalizeWord('US-Dollar', 'de'), isNull);
+      expect(WordAlphabet.normalizeWord('', 'de'), isNull);
+      expect(WordAlphabet.normalizeWord('café', 'en'), isNull);
     });
 
     test('trims the line endings the word lists ship with', () {
-      expect(WordleAlphabet.normalizeWord('crane\r', 'en'), 'CRANE');
+      expect(WordAlphabet.normalizeWord('crane\r', 'en'), 'CRANE');
     });
 
     test('normalises single key strokes', () {
-      expect(WordleAlphabet.normalizeChar('ü', 'de'), 'Ü');
-      expect(WordleAlphabet.normalizeChar('ü', 'en'), isNull);
-      expect(WordleAlphabet.normalizeChar('1', 'en'), isNull);
+      expect(WordAlphabet.normalizeChar('ü', 'de'), 'Ü');
+      expect(WordAlphabet.normalizeChar('ü', 'en'), isNull);
+      expect(WordAlphabet.normalizeChar('1', 'en'), isNull);
     });
   });
 }

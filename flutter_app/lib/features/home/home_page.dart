@@ -25,7 +25,9 @@ class HomePage extends ConsumerWidget {
     final scale = context.layoutScale;
     final gridWidth = width > _baseGridWidth * scale + context.rs(48)
         ? _baseGridWidth * scale
-        : width - context.rs(48);
+        // The first frame can be built before the viewport has been measured,
+        // and a width of 0 would leave the padded grid a negative width.
+        : math.max(0.0, width - context.rs(48));
 
     final crossAxisCount = gridWidth > context.rs(780)
         ? 3
@@ -35,7 +37,7 @@ class HomePage extends ConsumerWidget {
 
     final games = [
       (GameId.wordle, Icons.grid_on_rounded, '/wordle', true),
-      (GameId.spellingBee, Icons.hexagon_rounded, '/spelling-bee', false),
+      (GameId.spellingBee, Icons.hexagon_rounded, '/spelling-bee', true),
       (GameId.sudoku, Icons.apps_rounded, '/sudoku', false),
       (GameId.dontWordle, Icons.block_rounded, '/dont-wordle', false),
       (GameId.wormdle, null, '/wormdle', false),

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import '../domain/wordle_alphabet.dart';
+import '../../../../core/words/word_alphabet.dart';
 import '../domain/wordle_models.dart';
 
 /// Loads the bundled word lists and keeps the parsed results in memory.
@@ -152,7 +152,7 @@ _ParseResult _parseWordList(_ParseRequest request) {
   final words = <String>[];
 
   for (final line in const LineSplitter().convert(request.content)) {
-    final word = WordleAlphabet.normalizeWord(line, request.languageCode);
+    final word = WordAlphabet.normalizeWord(line, request.languageCode);
     if (word == null || !seen.add(word)) continue;
 
     counts.update(word.length, (value) => value + 1, ifAbsent: () => 1);

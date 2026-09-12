@@ -7,7 +7,7 @@ import 'package:flutter_app/app.dart';
 import 'package:flutter_app/features/games/wordle/data/wordle_word_repository.dart';
 import 'package:flutter_app/features/games/wordle/domain/wordle_models.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_controller.dart';
-import 'package:flutter_app/features/games/wordle/widgets/wordle_chip.dart';
+import 'package:flutter_app/widgets/game_chip.dart';
 import 'package:flutter_app/features/games/wordle/widgets/wordle_grid.dart';
 import 'package:flutter_app/features/games/wordle/widgets/wordle_keyboard.dart';
 import 'package:flutter_app/features/games/wordle/widgets/wordle_tile.dart';
@@ -96,7 +96,7 @@ Finder _onBoard(String letter) => find.descendant(
 );
 
 Finder _hintChip() =>
-    find.ancestor(of: find.text('Hint'), matching: find.byType(WordleChip));
+    find.ancestor(of: find.text('Hint'), matching: find.byType(GameChip));
 
 /// flutter_animate defers a freshly mounted animation by a zero timer, so one
 /// settle pass can end with that timer still queued.
