@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_app/app.dart';
+import 'package:flutter_app/core/dictionary/dictionary_repository.dart';
+import 'package:flutter_app/core/dictionary/word_definition.dart';
+import 'package:flutter_app/core/dictionary/word_definition_dialog.dart';
 import 'package:flutter_app/features/games/wordle/data/wordle_word_repository.dart';
 import 'package:flutter_app/features/games/wordle/domain/wordle_models.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_controller.dart';
@@ -58,16 +61,49 @@ class _TwoWordRepository extends WordleWordRepository {
 
 WordleWordRepository _twoWordRepository() => _TwoWordRepository();
 
+/// Stands in for the bundled dictionaries, which are far too large to decode
+/// under a widget test's fake clock. [knows] decides whether the solution —
+/// whichever word the game picked — has an entry.
+class _FakeDictionary extends DictionaryRepository {
+  _FakeDictionary({required this.knows});
+
+  final bool knows;
+
+  @override
+  Future<WordDefinition?> define(String languageCode, String word) async {
+    if (!knows) return null;
+    return WordDefinition(
+      word: word.toUpperCase(),
+      meanings: const [
+        WordMeaning(
+          partOfSpeech: 'Noun',
+          definition: 'a large long-necked wading bird',
+          relatedTerms: [],
+          examples: ['a crane took off from the reeds'],
+        ),
+      ],
+      synonyms: const ['heron'],
+      antonyms: const [],
+    );
+  }
+}
+
 Future<void> _openWordle(
   WidgetTester tester, {
   List<String> languages = const ['en'],
   WordleWordRepository? repository,
+  DictionaryRepository? dictionary,
 }) async {
   final resolved = repository ?? await _warmRepository(tester, languages);
 
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [wordleWordRepositoryProvider.overrideWithValue(resolved)],
+      overrides: [
+        wordleWordRepositoryProvider.overrideWithValue(resolved),
+        dictionaryRepositoryProvider.overrideWithValue(
+          dictionary ?? _FakeDictionary(knows: false),
+        ),
+      ],
       child: const GameNookApp(),
     ),
   );
@@ -314,6 +350,102 @@ void main() {
     expect(find.text('Bad luck!'), findsOneWidget);
     expect(find.text(solution), findsOneWidget);
     expect(container.read(wordleGameProvider).rows.single.isSolution, isTrue);
+  });
+
+  testWidgets('the revealed solution can be looked up in the dictionary', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openWordle(tester, dictionary: _FakeDictionary(knows: true));
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(WordleGrid)),
+      listen: false,
+    );
+    final solution = container.read(wordleGameProvider).solution;
+
+    await tester.tap(find.text('Give up'));
+    await tester.pump();
+    await tester.pump(revealDurationFor(solution.length));
+    await _settle(tester);
+
+    expect(find.byIcon(Icons.question_mark_rounded), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.question_mark_rounded));
+    await _settle(tester);
+
+    expect(find.byType(WordDefinitionDialog), findsOneWidget);
+    expect(find.text('Dictionary'), findsOneWidget);
+    expect(find.text('a large long-necked wading bird'), findsOneWidget);
+    expect(find.textContaining('a crane took off'), findsOneWidget);
+    expect(find.text('heron'), findsOneWidget);
+
+    await tester.tap(find.text('Close'));
+    await _settle(tester);
+
+    expect(find.byType(WordDefinitionDialog), findsNothing);
+    // The banner is still there to ask again from.
+    expect(find.byIcon(Icons.question_mark_rounded), findsOneWidget);
+  });
+
+  testWidgets('a win offers the explanation too', (tester) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openWordle(tester, dictionary: _FakeDictionary(knows: true));
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(WordleGrid)),
+      listen: false,
+    );
+    final solution = container.read(wordleGameProvider).solution;
+    for (final letter in solution.split('')) {
+      container.read(wordleGameProvider.notifier).typeLetter(letter);
+    }
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    // Nothing before the row has turned over — the banner carries the button.
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byIcon(Icons.question_mark_rounded), findsNothing);
+
+    await tester.pump(revealDurationFor(solution.length));
+    await _settle(tester);
+
+    expect(find.text('Genius!'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.question_mark_rounded));
+    await _settle(tester);
+
+    expect(find.byType(WordDefinitionDialog), findsOneWidget);
+  });
+
+  testWidgets('a word the dictionary has nothing on offers no explanation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openWordle(tester, dictionary: _FakeDictionary(knows: false));
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(WordleGrid)),
+      listen: false,
+    );
+    final solution = container.read(wordleGameProvider).solution;
+
+    await tester.tap(find.text('Give up'));
+    await tester.pump();
+    await tester.pump(revealDurationFor(solution.length));
+    await _settle(tester);
+
+    expect(find.text('Bad luck!'), findsOneWidget);
+    expect(find.byIcon(Icons.question_mark_rounded), findsNothing);
   });
 
   testWidgets('leaving and returning keeps the scored rows', (tester) async {
