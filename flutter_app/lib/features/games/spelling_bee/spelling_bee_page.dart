@@ -28,7 +28,7 @@ const double _kPanelBreakpoint = 780;
 
 /// How long a word that was turned down stays on the line: long enough to
 /// finish its shake and to be read, short enough not to be in the way.
-const Duration _kRejectedWordLingers = Duration(milliseconds: 520);
+const Duration _kRejectedWordLingers = Duration(milliseconds: 600);
 
 class SpellingBeePage extends ConsumerStatefulWidget {
   const SpellingBeePage({super.key});

@@ -11,7 +11,9 @@ import 'package:flutter_app/features/games/spelling_bee/state/spelling_bee_game_
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_actions.dart';
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_found_words.dart';
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_hive.dart';
+import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_input.dart';
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_message.dart';
+import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_palette.dart';
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_progress.dart';
 import 'package:flutter_app/widgets/game_chip.dart';
 
@@ -280,7 +282,7 @@ void main() {
     await _clearToast(tester);
   });
 
-  testWidgets('the shake leaves the line with the word that earned it', (
+  testWidgets('a rejected word leaves in red without touching the next one', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(834, 1112);
@@ -290,25 +292,40 @@ void main() {
     await _openBee(tester);
     final center = _game(tester).puzzle.centerLetter;
     final word = _game(tester).puzzle.wordsOf(BeeTier.normal).first;
-    const shake = ValueKey('reject-1');
+    final error = SpellingBeePalette.of(
+      tester.element(find.byType(SpellingBeeInput)),
+    ).error;
+    List<Color?> lineColors() => tester
+        .widgetList<Text>(
+          find.descendant(
+            of: find.byType(SpellingBeeInput),
+            matching: find.byType(Text),
+          ),
+        )
+        .map((text) => text.style?.color)
+        .toList();
 
     await _spell(tester, center * 4);
-    await _submit(tester);
-    expect(find.byKey(shake), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await _advance(tester, 300);
+    expect(lineColors(), hasLength(4));
+    expect(lineColors(), everyElement(error));
 
-    // Once the word is gone the bare caret is left standing still, rather
-    // than shaking a second time in its place.
-    await tester.pump(const Duration(milliseconds: 400));
+    // Taken off the line, the word fades out still red, rather than being
+    // rebuilt in its normal colours on the way out.
     await _advance(tester, 400);
     expect(_game(tester).input, isEmpty);
-    expect(find.byKey(shake), findsNothing);
+    expect(lineColors(), hasLength(4));
+    expect(lineColors(), everyElement(error));
+
+    await _advance(tester, 400);
+    expect(lineColors(), isEmpty);
     await _clearToast(tester);
 
-    // And a word that counts is not shaken for the one that did not.
+    // And a word typed afterwards is not coloured for the one that was not.
     await _spell(tester, word);
-    expect(find.byKey(shake), findsNothing);
+    expect(lineColors(), isNot(contains(error)));
     await _submit(tester);
-    expect(find.byKey(shake), findsNothing);
     expect(_game(tester).found.single.word, word);
     await _clearToast(tester);
   });

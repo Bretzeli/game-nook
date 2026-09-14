@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -9,7 +11,7 @@ import 'spelling_bee_palette.dart';
 /// Letters the hive does not offer are shown greyed out rather than refused
 /// as they are typed: a player who mistypes sees what went wrong instead of
 /// watching keys do nothing.
-class SpellingBeeInput extends StatelessWidget {
+class SpellingBeeInput extends StatefulWidget {
   const SpellingBeeInput({
     super.key,
     required this.input,
@@ -39,55 +41,122 @@ class SpellingBeeInput extends StatelessWidget {
   final bool showCaret;
 
   @override
+  State<SpellingBeeInput> createState() => _SpellingBeeInputState();
+}
+
+class _SpellingBeeInputState extends State<SpellingBeeInput>
+    with TickerProviderStateMixin {
+  /// Drives a single shake that settles on its own.
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 480),
+  );
+
+  /// How far the letters have turned to the error colour. It stays there
+  /// while the word waits to be taken off, so the word leaves as it was
+  /// judged instead of flashing back to normal on its way out.
+  late final AnimationController _tint = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 160),
+    reverseDuration: const Duration(milliseconds: 220),
+  );
+
+  /// The line the last rejection belongs to. Only that line shakes and turns
+  /// red — the empty line replacing it must not inherit either.
+  int? _rejectedLine;
+
+  @override
+  void didUpdateWidget(SpellingBeeInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.shakeToken != oldWidget.shakeToken && widget.shakeToken > 0) {
+      _rejectedLine = widget.lineToken;
+      _shake.forward(from: 0);
+      _tint.forward();
+    } else if (widget.lineToken == oldWidget.lineToken &&
+        widget.lineToken == _rejectedLine &&
+        widget.input != oldWidget.input) {
+      // The player went back to the word before it was taken off: it is
+      // theirs again, and no longer wrong.
+      _rejectedLine = null;
+      _tint.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _shake.dispose();
+    _tint.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final palette = SpellingBeePalette.of(context);
     final fontSize = context.rs(30);
+    final input = widget.input;
+    final showCaret = widget.showCaret;
+    final lineToken = widget.lineToken;
 
-    Widget line = Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        for (var i = 0; i < input.length; i++)
-          _letter(context, palette, input[i], i, fontSize),
-        if (showCaret) _caret(palette, fontSize),
-      ],
+    final line = AnimatedBuilder(
+      animation: Listenable.merge([_shake, _tint]),
+      builder: (context, _) {
+        final rejected = lineToken == _rejectedLine;
+        final tint = rejected ? Curves.easeOut.transform(_tint.value) : 0.0;
+
+        // A few swings that shrink to nothing, so the word comes to rest
+        // instead of stopping mid-swing.
+        var dx = 0.0;
+        if (rejected && _shake.isAnimating) {
+          final t = _shake.value;
+          final decay = math.pow(1 - t, 2).toDouble();
+          dx = math.sin(t * math.pi * 2 * 3) * fontSize * 0.22 * decay;
+        }
+
+        return Transform.translate(
+          offset: Offset(dx, 0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              for (var i = 0; i < input.length; i++)
+                _letter(palette, input[i], i, fontSize, tint),
+              if (showCaret) _caret(palette, fontSize),
+            ],
+          ),
+        );
+      },
     );
 
-    if (shakeToken > 0) {
-      line = line
-          .animate(key: ValueKey('reject-$shakeToken'))
-          .shakeX(duration: 420.ms, hz: 5.5, amount: 5)
-          .tint(
-            color: palette.error,
-            begin: 0.9,
-            end: 0,
-            duration: 560.ms,
-            curve: Curves.easeOut,
-          );
-    }
+    final rejected = widget.leavingWasRejected;
 
     return SizedBox(
       height: fontSize * 1.5,
       child: AnimatedSwitcher(
-        duration: Duration(milliseconds: leavingWasRejected ? 240 : 300),
+        duration: Duration(milliseconds: rejected ? 260 : 300),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
         // An accepted word leaves upwards, towards the bars it just filled;
         // one that spells nothing shrinks away where it stands.
+        //
+        // The wrappers are the same either way, only their values differ:
+        // changing the wrappers would rebuild the word on its way out and
+        // replay its shake and every letter's pop.
         transitionBuilder: (child, animation) {
-          final faded = FadeTransition(opacity: animation, child: child);
-          if (leavingWasRejected) {
-            return ScaleTransition(
-              scale: Tween<double>(begin: 0.82, end: 1).animate(animation),
-              child: faded,
-            );
-          }
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, -0.7),
-              end: Offset.zero,
-            ).animate(animation),
-            child: faded,
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(
+                begin: rejected ? 0.85 : 1,
+                end: 1,
+              ).animate(animation),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: rejected ? Offset.zero : const Offset(0, -0.7),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
           );
         },
         child: KeyedSubtree(
@@ -101,19 +170,19 @@ class SpellingBeeInput extends StatelessWidget {
   }
 
   Widget _letter(
-    BuildContext context,
     SpellingBeePalette palette,
     String letter,
     int index,
     double fontSize,
+    double tint,
   ) {
-    final Color color;
-    if (letter == centerLetter) {
-      color = palette.normal;
-    } else if (letters.contains(letter)) {
-      color = palette.inputText;
+    final Color base;
+    if (letter == widget.centerLetter) {
+      base = palette.normal;
+    } else if (widget.letters.contains(letter)) {
+      base = palette.inputText;
     } else {
-      color = palette.inputMuted;
+      base = palette.inputMuted;
     }
 
     return Text(
@@ -124,7 +193,7 @@ class SpellingBeeInput extends StatelessWidget {
             fontWeight: FontWeight.w800,
             height: 1.2,
             letterSpacing: 1.5,
-            color: color,
+            color: Color.lerp(base, palette.error, tint),
           ),
         )
         // A short pop confirms the keystroke, replayed whenever the letter in
