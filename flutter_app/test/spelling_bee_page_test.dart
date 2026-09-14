@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_app/app.dart';
+import 'package:flutter_app/core/dictionary/dictionary_repository.dart';
+import 'package:flutter_app/core/dictionary/word_definition.dart';
 import 'package:flutter_app/features/games/spelling_bee/data/spelling_bee_word_repository.dart';
 import 'package:flutter_app/features/games/spelling_bee/domain/spelling_bee_models.dart';
 import 'package:flutter_app/features/games/spelling_bee/state/spelling_bee_controller.dart';
@@ -15,6 +17,7 @@ import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_inp
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_message.dart';
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_palette.dart';
 import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_progress.dart';
+import 'package:flutter_app/features/games/spelling_bee/widgets/spelling_bee_word_card.dart';
 import 'package:flutter_app/widgets/game_chip.dart';
 
 import 'spelling_bee_fixture.dart';
@@ -31,15 +34,30 @@ Future<void> _advance(WidgetTester tester, [int milliseconds = 400]) async {
   await tester.pump(const Duration(milliseconds: 1));
 }
 
+/// Serves entries from a map instead of the bundled multi-megabyte asset.
+class _StubDictionary extends DictionaryRepository {
+  _StubDictionary(this.entries);
+
+  final Map<String, WordDefinition> entries;
+
+  @override
+  Future<WordDefinition?> define(String languageCode, String word) async =>
+      entries[word.toUpperCase()];
+}
+
 Future<void> _openBee(
   WidgetTester tester, {
   SpellingBeeWordRepository? repository,
+  DictionaryRepository? dictionary,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         spellingBeeWordRepositoryProvider.overrideWithValue(
           repository ?? FixtureBeeRepository(),
+        ),
+        dictionaryRepositoryProvider.overrideWithValue(
+          dictionary ?? _StubDictionary(const {}),
         ),
       ],
       child: const GameNookApp(),
@@ -372,6 +390,105 @@ void main() {
     );
   });
 
+  testWidgets('tapping a found word opens its card with the dictionary entry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openBee(
+      tester,
+      dictionary: _StubDictionary({
+        'CRUDE': const WordDefinition(
+          word: 'CRUDE',
+          meanings: [
+            WordMeaning(
+              partOfSpeech: 'Adjective',
+              definition: 'In a natural or raw state',
+              relatedTerms: [],
+              examples: [],
+            ),
+          ],
+          synonyms: ['raw'],
+          antonyms: [],
+        ),
+      }),
+    );
+
+    await _spell(tester, 'CRUDE');
+    await _submit(tester);
+    await _clearToast(tester);
+    final points = _game(tester).found.single.points;
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SpellingBeeFoundWords),
+        matching: find.text('CRUDE'),
+      ),
+    );
+    await _advance(tester, 400);
+
+    final card = find.byType(SpellingBeeWordCard);
+    expect(card, findsOneWidget);
+    for (final text in [
+      'CRUDE',
+      '$points points',
+      'NORMAL',
+      'In a natural or raw state',
+      'raw',
+    ]) {
+      expect(
+        find.descendant(of: card, matching: find.text(text)),
+        findsOneWidget,
+        reason: 'missing $text',
+      );
+    }
+
+    await tester.tap(find.descendant(of: card, matching: find.text('Close')));
+    await _advance(tester, 400);
+    expect(card, findsNothing);
+  });
+
+  testWidgets('a missed word opens its card even without a dictionary entry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openBee(tester);
+    final game = _game(tester);
+    final missed = game.puzzle.wordsOf(BeeTier.difficult).first;
+
+    await tester.tap(find.text('All words'));
+    await _advance(tester, 600);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SpellingBeeFoundWords),
+        matching: find.text(missed),
+      ),
+    );
+    await _advance(tester, 400);
+
+    final card = find.byType(SpellingBeeWordCard);
+    final points = beeScoreFor(missed, BeeTier.difficult, game.puzzle.letters);
+    for (final text in [
+      missed,
+      points == 1 ? '1 point' : '$points points',
+      'DIFFICULT',
+      'MISSED',
+      'No dictionary entry for this word',
+    ]) {
+      expect(
+        find.descendant(of: card, matching: find.text(text)),
+        findsOneWidget,
+        reason: 'missing $text',
+      );
+    }
+  });
+
   testWidgets('a new game deals a fresh round', (tester) async {
     tester.view.physicalSize = const Size(834, 1112);
     tester.view.devicePixelRatio = 1.0;
@@ -426,14 +543,6 @@ void main() {
     expect(find.text('Neues Spiel'), findsOneWidget);
     expect(find.text('Alle Wörter'), findsOneWidget);
     expect(find.text('Punkte'.toUpperCase()), findsOneWidget);
-    expect(_game(tester).puzzle.letters, {
-      'S',
-      'P',
-      'R',
-      'A',
-      'C',
-      'H',
-      'E',
-    });
+    expect(_game(tester).puzzle.letters, {'S', 'P', 'R', 'A', 'C', 'H', 'E'});
   });
 }

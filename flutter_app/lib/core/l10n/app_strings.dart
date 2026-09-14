@@ -97,6 +97,10 @@ class AppStrings {
 
   String get dictionaryAntonyms => _isGerman ? 'Gegenwörter' : 'Antonyms';
 
+  String get dictionaryNoEntry => _isGerman
+      ? 'Kein Wörterbucheintrag für dieses Wort'
+      : 'No dictionary entry for this word';
+
   // --- Wordle -------------------------------------------------------------
 
   String get wordleLengthLabel => _isGerman ? 'Länge' : 'Length';
@@ -313,6 +317,15 @@ class AppStrings {
   String get spellingBeeClose => _isGerman ? 'Schließen' : 'Close';
 
   String get spellingBeeMissedLabel => _isGerman ? 'Verpasst' : 'Missed';
+
+  String get spellingBeeFoundLabel => _isGerman ? 'Gefunden' : 'Found';
+
+  String get spellingBeePangramLabel => _isGerman ? 'Pangramm' : 'Pangram';
+
+  String spellingBeePoints(int points) {
+    if (_isGerman) return points == 1 ? '1 Punkt' : '$points Punkte';
+    return points == 1 ? '1 point' : '$points points';
+  }
 
   String get spellingBeeLoadFailed => _isGerman
       ? 'Die Wortliste konnte nicht geladen werden.'

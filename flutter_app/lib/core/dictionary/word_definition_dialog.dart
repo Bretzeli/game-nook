@@ -68,27 +68,9 @@ class WordDefinitionDialog extends StatelessWidget {
       content: SizedBox(
         width: context.rs(420),
         child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < definition.meanings.length; i++)
-                _Meaning(
-                  meaning: definition.meanings[i],
-                  // Only worth numbering once there is more than one.
-                  index: definition.meanings.length > 1 ? i + 1 : null,
-                ),
-              if (definition.synonyms.isNotEmpty)
-                _WordList(
-                  label: strings.dictionarySynonyms,
-                  words: definition.synonyms,
-                ),
-              if (definition.antonyms.isNotEmpty)
-                _WordList(
-                  label: strings.dictionaryAntonyms,
-                  words: definition.antonyms,
-                ),
-            ],
+          child: WordDefinitionContent(
+            strings: strings,
+            definition: definition,
           ),
         ),
       ),
@@ -100,6 +82,46 @@ class WordDefinitionDialog extends StatelessWidget {
             style: TextStyle(color: decor.accentColor),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// The body of a dictionary entry — every meaning, then synonyms and
+/// antonyms — without any frame around it, so a game can set it inside a
+/// card of its own.
+class WordDefinitionContent extends StatelessWidget {
+  const WordDefinitionContent({
+    super.key,
+    required this.strings,
+    required this.definition,
+  });
+
+  final AppStrings strings;
+  final WordDefinition definition;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < definition.meanings.length; i++)
+          _Meaning(
+            meaning: definition.meanings[i],
+            // Only worth numbering once there is more than one.
+            index: definition.meanings.length > 1 ? i + 1 : null,
+          ),
+        if (definition.synonyms.isNotEmpty)
+          _WordList(
+            label: strings.dictionarySynonyms,
+            words: definition.synonyms,
+          ),
+        if (definition.antonyms.isNotEmpty)
+          _WordList(
+            label: strings.dictionaryAntonyms,
+            words: definition.antonyms,
+          ),
       ],
     );
   }

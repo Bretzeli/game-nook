@@ -6,6 +6,7 @@ import '../../../../core/layout/responsive_scale.dart';
 import '../../../../core/theme/app_theme_extension.dart';
 import '../domain/spelling_bee_models.dart';
 import 'spelling_bee_palette.dart';
+import 'spelling_bee_word_card.dart';
 
 /// One word as the list shows it.
 class _Entry {
@@ -14,12 +15,16 @@ class _Entry {
     required this.tier,
     required this.found,
     required this.isPangram,
+    required this.points,
   });
 
   final String word;
   final BeeTier tier;
   final bool found;
   final bool isPangram;
+
+  /// What the word paid — or, for a missed one, what it would have.
+  final int points;
 }
 
 /// The words found so far — and, once the player has given up, the ones they
@@ -61,6 +66,7 @@ class SpellingBeeFoundWords extends StatelessWidget {
             tier: word.tier,
             found: true,
             isPangram: word.isPangram,
+            points: word.points,
           ),
       ];
     }
@@ -77,6 +83,9 @@ class SpellingBeeFoundWords extends StatelessWidget {
             tier: tier,
             found: foundWords.containsKey(word),
             isPangram: isBeePangram(word, puzzle.letters),
+            points:
+                foundWords[word]?.points ??
+                beeScoreFor(word, tier, puzzle.letters),
           ),
       for (final word in found)
         if (word.tier == BeeTier.bonus)
@@ -85,6 +94,7 @@ class SpellingBeeFoundWords extends StatelessWidget {
             tier: BeeTier.bonus,
             found: true,
             isPangram: word.isPangram,
+            points: word.points,
           ),
     ];
   }
@@ -130,6 +140,7 @@ class SpellingBeeFoundWords extends StatelessWidget {
                       child: _WordChip(
                         entry: entries[index],
                         animateIn: !revealed,
+                        onTap: () => _openCard(context, entries[index]),
                       ),
                     ),
                   ),
@@ -188,9 +199,7 @@ class SpellingBeeFoundWords extends StatelessWidget {
                       ),
                     ),
                   )
-                : SingleChildScrollView(
-                    child: _wrap(context, entries),
-                  ),
+                : SingleChildScrollView(child: _wrap(context, entries)),
           ),
         ],
       ),
@@ -203,8 +212,25 @@ class SpellingBeeFoundWords extends StatelessWidget {
       runSpacing: context.rs(6),
       children: [
         for (final entry in entries)
-          _WordChip(entry: entry, animateIn: !revealed),
+          _WordChip(
+            entry: entry,
+            animateIn: !revealed,
+            onTap: () => _openCard(context, entry),
+          ),
       ],
+    );
+  }
+
+  void _openCard(BuildContext context, _Entry entry) {
+    showSpellingBeeWordCard(
+      context,
+      strings: strings,
+      languageCode: puzzle.languageCode,
+      word: entry.word,
+      tier: entry.tier,
+      points: entry.points,
+      isPangram: entry.isPangram,
+      found: entry.found,
     );
   }
 
@@ -295,19 +321,59 @@ class _CountButton extends StatelessWidget {
 }
 
 class _WordChip extends StatelessWidget {
-  const _WordChip({required this.entry, required this.animateIn});
+  const _WordChip({
+    required this.entry,
+    required this.animateIn,
+    required this.onTap,
+  });
 
   final _Entry entry;
   final bool animateIn;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final palette = SpellingBeePalette.of(context);
+
+    final Widget chip = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: _buildBody(context),
+      ),
+    );
+
+    if (!animateIn) return chip;
+
+    // Plays once, when the word first joins the list.
+    var animated = chip
+        .animate(key: ValueKey('chip-${entry.word}'))
+        .fadeIn(duration: 240.ms)
+        .scaleXY(
+          begin: 0.5,
+          end: 1,
+          duration: 420.ms,
+          curve: Curves.easeOutBack,
+        );
+    if (entry.isPangram) {
+      animated = animated.shimmer(
+        delay: 200.ms,
+        duration: 1200.ms,
+        color: palette.colorFor(entry.tier).withValues(alpha: 0.8),
+        padding: 0,
+      );
+    }
+    return animated;
+  }
+
+  Widget _buildBody(BuildContext context) {
     final palette = SpellingBeePalette.of(context);
     final theme = Theme.of(context);
     final color = palette.colorFor(entry.tier);
     final found = entry.found;
 
-    final chip = Container(
+    return Container(
       padding: EdgeInsets.symmetric(
         horizontal: context.rs(8),
         vertical: context.rs(4),
@@ -345,27 +411,5 @@ class _WordChip extends StatelessWidget {
         ],
       ),
     );
-
-    if (!animateIn) return chip;
-
-    // Plays once, when the word first joins the list.
-    var animated = chip
-        .animate(key: ValueKey('chip-${entry.word}'))
-        .fadeIn(duration: 240.ms)
-        .scaleXY(
-          begin: 0.5,
-          end: 1,
-          duration: 420.ms,
-          curve: Curves.easeOutBack,
-        );
-    if (entry.isPangram) {
-      animated = animated.shimmer(
-        delay: 200.ms,
-        duration: 1200.ms,
-        color: color.withValues(alpha: 0.8),
-        padding: 0,
-      );
-    }
-    return animated;
   }
 }
