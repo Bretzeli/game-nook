@@ -1,52 +1,37 @@
-import '../domain/wordle_models.dart';
+import '../../wordle_shared/domain/wordle_board.dart';
+import '../../wordle_shared/domain/wordle_models.dart';
+import '../../wordle_shared/state/wordle_board_controller.dart';
+import '../domain/wordle_game_models.dart';
 
-class WordleGameState {
+class WordleGameState implements WordleBoardState<WordleGameState> {
   const WordleGameState({
-    required this.languageCode,
-    required this.wordLength,
+    required this.board,
     required this.difficulty,
     required this.phase,
-    required this.solution,
-    required this.rows,
-    required this.input,
-    required this.cursor,
-    required this.acceptedWords,
     required this.solutionPool,
     required this.hintsUsed,
-    required this.round,
   });
 
+  /// A game waiting for its word lists — or, when [failed], one whose lists
+  /// could not be read.
   WordleGameState.loading({
-    required this.languageCode,
-    required this.wordLength,
+    required String languageCode,
+    required int wordLength,
     required this.difficulty,
-  }) : phase = WordlePhase.loading,
-       solution = '',
-       rows = const [],
-       input = const [],
-       cursor = 0,
-       acceptedWords = const {},
+    bool failed = false,
+  }) : board = WordleBoard.empty(
+         languageCode: languageCode,
+         wordLength: wordLength,
+       ),
+       phase = failed ? WordlePhase.failed : WordlePhase.loading,
        solutionPool = const [],
-       hintsUsed = 0,
-       round = 0;
+       hintsUsed = 0;
 
-  final String languageCode;
-  final int wordLength;
+  @override
+  final WordleBoard board;
+
   final WordleDifficulty difficulty;
   final WordlePhase phase;
-  final String solution;
-
-  /// Rows already submitted (or filled in by giving up), oldest first.
-  final List<WordleRow> rows;
-
-  /// The row being typed; empty slots hold an empty string.
-  final List<String> input;
-
-  /// Caret position, `0..wordLength`. Equal to [wordLength] once the row is
-  /// full, which is when typing stops having an effect.
-  final int cursor;
-
-  final Set<String> acceptedWords;
 
   /// The words the solution was drawn from — the set hints pick from, so a
   /// hint is always a word that could plausibly have been the answer.
@@ -55,42 +40,29 @@ class WordleGameState {
   /// Hints taken in this round, shown on the hint button.
   final int hintsUsed;
 
-  /// Bumped for every new game so the board can reset its animations.
-  final int round;
-
   bool get isPlaying => phase == WordlePhase.playing;
 
-  bool get canGiveUp => isPlaying && solution.isNotEmpty;
+  bool get canGiveUp => isPlaying && board.hasSolution;
 
-  int get maxAttempts => wordleMaxAttempts(wordLength);
+  int get maxAttempts => wordleMaxAttempts(board.wordLength);
 
-  int get attemptsUsed => rows.where((row) => !row.isSolution).length;
+  @override
+  bool get acceptsInput => isPlaying;
 
-  String get typedWord => input.join();
-
-  bool get isInputComplete =>
-      input.length == wordLength && input.every((letter) => letter.isNotEmpty);
+  @override
+  WordleGameState withBoard(WordleBoard board) => copyWith(board: board);
 
   WordleGameState copyWith({
+    WordleBoard? board,
     WordlePhase? phase,
-    List<WordleRow>? rows,
-    List<String>? input,
-    int? cursor,
     int? hintsUsed,
   }) {
     return WordleGameState(
-      languageCode: languageCode,
-      wordLength: wordLength,
+      board: board ?? this.board,
       difficulty: difficulty,
       phase: phase ?? this.phase,
-      solution: solution,
-      rows: rows ?? this.rows,
-      input: input ?? this.input,
-      cursor: cursor ?? this.cursor,
-      acceptedWords: acceptedWords,
       solutionPool: solutionPool,
       hintsUsed: hintsUsed ?? this.hintsUsed,
-      round: round,
     );
   }
 }

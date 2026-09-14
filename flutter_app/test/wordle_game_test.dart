@@ -1,41 +1,17 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_app/core/l10n/locale_notifier.dart';
-import 'package:flutter_app/features/games/wordle/data/wordle_word_repository.dart';
-import 'package:flutter_app/features/games/wordle/domain/wordle_models.dart';
-import 'package:flutter_app/features/games/wordle/domain/wordle_rules.dart';
+import 'package:flutter_app/features/games/wordle_shared/data/wordle_word_repository.dart';
+import 'package:flutter_app/features/games/wordle/domain/wordle_game_models.dart';
+import 'package:flutter_app/features/games/wordle_shared/domain/wordle_models.dart';
+import 'package:flutter_app/features/games/wordle_shared/domain/wordle_rules.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_controller.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_game_state.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_settings.dart';
 
-/// A repository serving one fixed set of same-length words, for tests that
-/// need to know exactly which candidates are in play.
-class _FixedRepository extends WordleWordRepository {
-  _FixedRepository(this.words);
-
-  final List<String> words;
-
-  @override
-  Future<List<int>> availableLengths(
-    String languageCode,
-    WordleDifficulty difficulty,
-  ) async => [words.first.length];
-
-  @override
-  Future<List<String>> solutionPool(
-    String languageCode,
-    WordleDifficulty difficulty,
-    int length,
-  ) async => words;
-
-  @override
-  Future<Set<String>> acceptedWords(String languageCode, int length) async =>
-      words.toSet();
-}
+import 'wordle_fixture.dart';
 
 /// Waits until the controller has a solution loaded from the bundled lists.
 ///
@@ -44,23 +20,12 @@ class _FixedRepository extends WordleWordRepository {
 Future<WordleGameState> _ready(
   ProviderContainer container, {
   int afterRound = 0,
-}) async {
-  bool isReady(WordleGameState state) =>
-      state.phase != WordlePhase.loading && state.round > afterRound;
-
-  final completer = Completer<WordleGameState>();
-  final subscription = container.listen<WordleGameState>(wordleGameProvider, (
-    _,
-    next,
-  ) {
-    if (isReady(next) && !completer.isCompleted) completer.complete(next);
-  }, fireImmediately: true);
-  addTearDown(subscription.close);
-
-  final state = container.read(wordleGameProvider);
-  if (isReady(state)) return state;
-  return completer.future.timeout(const Duration(seconds: 60));
-}
+}) => waitForState(
+  container,
+  wordleGameProvider,
+  (state) =>
+      state.phase != WordlePhase.loading && state.board.round > afterRound,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -77,14 +42,14 @@ void main() {
     final state = await _ready(container);
 
     expect(state.phase, WordlePhase.playing);
-    expect(state.wordLength, kWordleDefaultLength);
-    expect(state.solution.length, kWordleDefaultLength);
-    expect(state.input, List.filled(kWordleDefaultLength, ''));
+    expect(state.board.wordLength, kWordleDefaultLength);
+    expect(state.board.solution.length, kWordleDefaultLength);
+    expect(state.board.input, List.filled(kWordleDefaultLength, ''));
 
     final pool = await container
         .read(wordleWordRepositoryProvider)
         .solutionPool('en', WordleDifficulty.normal, kWordleDefaultLength);
-    expect(pool, contains(state.solution));
+    expect(pool, contains(state.board.solution));
   });
 
   test('accepts any word from all.txt regardless of difficulty', () async {
@@ -96,15 +61,15 @@ void main() {
     final pool = await container
         .read(wordleWordRepositoryProvider)
         .solutionPool('en', WordleDifficulty.normal, kWordleDefaultLength);
-    final guess = state.acceptedWords.firstWhere(
-      (word) => !pool.contains(word) && word != state.solution,
+    final guess = state.board.acceptedWords.firstWhere(
+      (word) => !pool.contains(word) && word != state.board.solution,
     );
 
     for (final letter in guess.split('')) {
       controller.typeLetter(letter);
     }
     expect(controller.submit(), isNull);
-    expect(container.read(wordleGameProvider).rows.single.word, guess);
+    expect(container.read(wordleGameProvider).board.rows.single.word, guess);
   });
 
   test('rejects words that are in no list', () async {
@@ -117,7 +82,7 @@ void main() {
     }
 
     expect(controller.submit()?.kind, WordleRejectionKind.notInWordList);
-    expect(container.read(wordleGameProvider).rows, isEmpty);
+    expect(container.read(wordleGameProvider).board.rows, isEmpty);
   });
 
   test('typing overwrites from the selected slot', () async {
@@ -128,25 +93,25 @@ void main() {
     for (final letter in 'CRANE'.split('')) {
       controller.typeLetter(letter);
     }
-    expect(container.read(wordleGameProvider).typedWord, 'CRANE');
+    expect(container.read(wordleGameProvider).board.typedWord, 'CRANE');
 
     controller.selectSlot(2);
     controller.typeLetter('O');
-    expect(container.read(wordleGameProvider).typedWord, 'CRONE');
-    expect(container.read(wordleGameProvider).cursor, 3);
+    expect(container.read(wordleGameProvider).board.typedWord, 'CRONE');
+    expect(container.read(wordleGameProvider).board.cursor, 3);
 
     // Backspace clears whichever slot is currently selected (the one under
     // the caret), not the one before it.
     controller.backspace();
-    expect(container.read(wordleGameProvider).input[3], '');
-    expect(container.read(wordleGameProvider).input[2], 'O');
-    expect(container.read(wordleGameProvider).cursor, 3);
+    expect(container.read(wordleGameProvider).board.input[3], '');
+    expect(container.read(wordleGameProvider).board.input[2], 'O');
+    expect(container.read(wordleGameProvider).board.cursor, 3);
 
     // With nothing occupying the caret slot, backspace falls back to
     // auto-selecting and clearing the last filled letter.
     controller.backspace();
-    expect(container.read(wordleGameProvider).input[2], '');
-    expect(container.read(wordleGameProvider).cursor, 2);
+    expect(container.read(wordleGameProvider).board.input[2], '');
+    expect(container.read(wordleGameProvider).board.cursor, 2);
   });
 
   test('giving up fills in the solution and ends the round', () async {
@@ -158,9 +123,9 @@ void main() {
 
     final after = container.read(wordleGameProvider);
     expect(after.phase, WordlePhase.lost);
-    expect(after.rows.single.word, state.solution);
-    expect(after.rows.single.isSolution, isTrue);
-    expect(after.attemptsUsed, 0);
+    expect(after.board.rows.single.word, state.board.solution);
+    expect(after.board.rows.single.isSolution, isTrue);
+    expect(after.board.guessCount, 0);
   });
 
   test('changing the word length starts a new game', () async {
@@ -168,11 +133,11 @@ void main() {
     final first = await _ready(container);
 
     container.read(wordleGameProvider.notifier).changeWordLength(6);
-    final second = await _ready(container, afterRound: first.round);
+    final second = await _ready(container, afterRound: first.board.round);
 
-    expect(second.wordLength, 6);
-    expect(second.solution.length, 6);
-    expect(second.round, greaterThan(first.round));
+    expect(second.board.wordLength, 6);
+    expect(second.board.solution.length, 6);
+    expect(second.board.round, greaterThan(first.board.round));
     expect(container.read(wordleSettingsProvider).wordLength, 6);
   });
 
@@ -182,9 +147,9 @@ void main() {
     expect(first.maxAttempts, kWordleMaxAttempts);
 
     container.read(wordleGameProvider.notifier).changeWordLength(8);
-    final second = await _ready(container, afterRound: first.round);
+    final second = await _ready(container, afterRound: first.board.round);
 
-    expect(second.wordLength, 8);
+    expect(second.board.wordLength, 8);
     expect(second.maxAttempts, kWordleMaxAttempts + 3);
   });
 
@@ -201,29 +166,29 @@ void main() {
     }
 
     // One guess to put some hints on the board.
-    final opener = state.acceptedWords.firstWhere(
-      (word) => word != state.solution,
+    final opener = state.board.acceptedWords.firstWhere(
+      (word) => word != state.board.solution,
     );
     type(opener);
     expect(controller.submit(), isNull);
 
     final constraints = HardModeConstraints.fromRows(
-      container.read(wordleGameProvider).rows,
+      container.read(wordleGameProvider).board.rows,
     );
-    final ignoresHints = state.acceptedWords.firstWhere(
-      (word) => word != state.solution && constraints.validate(word) != null,
+    final ignoresHints = state.board.acceptedWords.firstWhere(
+      (word) => word != state.board.solution && constraints.validate(word) != null,
     );
 
     // Switched on mid-game, the very next guess has to obey.
     settings.setHardMode(true);
     type(ignoresHints);
     expect(controller.submit()?.kind, WordleRejectionKind.hardMode);
-    expect(container.read(wordleGameProvider).rows, hasLength(1));
+    expect(container.read(wordleGameProvider).board.rows, hasLength(1));
 
     // Switched off again, the same guess goes through.
     settings.setHardMode(false);
     expect(controller.submit(), isNull);
-    expect(container.read(wordleGameProvider).rows, hasLength(2));
+    expect(container.read(wordleGameProvider).board.rows, hasLength(2));
   });
 
   group('hints', () {
@@ -236,11 +201,11 @@ void main() {
 
       final after = container.read(wordleGameProvider);
       expect(after.hintsUsed, 1);
-      expect(after.typedWord.length, after.wordLength);
-      expect(after.cursor, after.wordLength);
+      expect(after.board.typedWord.length, after.board.wordLength);
+      expect(after.board.cursor, after.board.wordLength);
       // Never the answer itself, and always submittable.
-      expect(after.typedWord, isNot(state.solution));
-      expect(after.acceptedWords, contains(after.typedWord));
+      expect(after.board.typedWord, isNot(state.board.solution));
+      expect(after.board.acceptedWords, contains(after.board.typedWord));
     });
 
     test('only suggests words that fit every hint so far', () async {
@@ -251,21 +216,21 @@ void main() {
       // Play an opener so the board carries real constraints.
       final opener = state.solutionPool.firstWhere(
         (word) =>
-            word != state.solution && state.acceptedWords.contains(word),
+            word != state.board.solution && state.board.acceptedWords.contains(word),
       );
       for (final letter in opener.split('')) {
         controller.typeLetter(letter);
       }
       expect(controller.submit(), isNull);
 
-      final rows = container.read(wordleGameProvider).rows;
+      final rows = container.read(wordleGameProvider).board.rows;
       for (var i = 0; i < 25; i++) {
         final outcome = controller.hint();
         if (outcome == WordleHintOutcome.onlySolutionLeft) break;
 
-        final suggestion = container.read(wordleGameProvider).typedWord;
+        final suggestion = container.read(wordleGameProvider).board.typedWord;
         expect(isConsistentWith(suggestion, rows), isTrue);
-        expect(suggestion, isNot(state.solution));
+        expect(suggestion, isNot(state.board.solution));
       }
     });
 
@@ -277,7 +242,7 @@ void main() {
 
       final opener = state.solutionPool.firstWhere(
         (word) =>
-            word != state.solution && state.acceptedWords.contains(word),
+            word != state.board.solution && state.board.acceptedWords.contains(word),
       );
       for (final letter in opener.split('')) {
         controller.typeLetter(letter);
@@ -296,7 +261,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           wordleWordRepositoryProvider.overrideWithValue(
-            _FixedRepository(const ['CRANE', 'SLATE']),
+            FixedWordRepository(const ['CRANE', 'SLATE']),
           ),
         ],
       );
@@ -305,21 +270,21 @@ void main() {
       final state = await _ready(container);
       final controller = container.read(wordleGameProvider.notifier);
       final other = state.solutionPool.firstWhere(
-        (word) => word != state.solution,
+        (word) => word != state.board.solution,
       );
 
       expect(controller.hint(), WordleHintOutcome.filled);
-      expect(container.read(wordleGameProvider).typedWord, other);
+      expect(container.read(wordleGameProvider).board.typedWord, other);
       expect(controller.submit(), isNull);
 
       // Nothing closer left to offer.
       expect(controller.hint(), WordleHintOutcome.onlySolutionLeft);
       // Asking alone neither fills the row nor spends a hint.
-      expect(container.read(wordleGameProvider).typedWord, isEmpty);
+      expect(container.read(wordleGameProvider).board.typedWord, isEmpty);
       expect(container.read(wordleGameProvider).hintsUsed, 1);
 
       controller.fillSolution();
-      expect(container.read(wordleGameProvider).typedWord, state.solution);
+      expect(container.read(wordleGameProvider).board.typedWord, state.board.solution);
       expect(container.read(wordleGameProvider).hintsUsed, 2);
     });
 
@@ -332,7 +297,7 @@ void main() {
       expect(container.read(wordleGameProvider).hintsUsed, 1);
 
       controller.newGame();
-      final second = await _ready(container, afterRound: first.round);
+      final second = await _ready(container, afterRound: first.board.round);
       expect(second.hintsUsed, 0);
     });
 
@@ -357,9 +322,9 @@ void main() {
     controller.changeDifficulty(WordleDifficulty.allWords);
 
     final after = container.read(wordleGameProvider);
-    expect(after.round, before.round);
-    expect(after.solution, before.solution);
-    expect(after.typedWord, 'A');
+    expect(after.board.round, before.board.round);
+    expect(after.board.solution, before.board.solution);
+    expect(after.board.typedWord, 'A');
     expect(container.read(wordleSettingsProvider).difficulty,
         WordleDifficulty.allWords);
   });
@@ -371,13 +336,13 @@ void main() {
     container.read(appLocaleProvider.notifier).setLocale(const Locale('de'));
     final german = await _ready(container);
 
-    expect(german.languageCode, 'de');
-    expect(german.solution.length, kWordleDefaultLength);
+    expect(german.board.languageCode, 'de');
+    expect(german.board.solution.length, kWordleDefaultLength);
 
     final pool = await container
         .read(wordleWordRepositoryProvider)
         .solutionPool('de', WordleDifficulty.normal, kWordleDefaultLength);
-    expect(pool, contains(german.solution));
+    expect(pool, contains(german.board.solution));
   });
 
   group('word lists', () {

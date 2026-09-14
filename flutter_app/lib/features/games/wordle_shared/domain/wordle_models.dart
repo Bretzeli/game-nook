@@ -31,12 +31,6 @@ enum WordleDifficulty {
   final String fileName;
 }
 
-enum WordlePhase { loading, playing, won, lost, failed }
-
-extension WordlePhaseX on WordlePhase {
-  bool get isFinished => this == WordlePhase.won || this == WordlePhase.lost;
-}
-
 /// A row on the board that has been revealed: either a submitted guess or the
 /// solution shown after the player gave up.
 class WordleRow {
@@ -54,21 +48,8 @@ class WordleRow {
   final bool isSolution;
 }
 
-/// What asking for a hint did.
-enum WordleHintOutcome {
-  /// The row was filled with a word that could still be the solution.
-  filled,
-
-  /// Every other candidate has been ruled out, so the only word left to fill
-  /// in would be the solution itself — the player gets to decide.
-  onlySolutionLeft,
-
-  /// No game is running.
-  unavailable,
-}
-
 /// Why a submitted guess was not accepted.
-enum WordleRejectionKind { tooShort, notInWordList, hardMode }
+enum WordleRejectionKind { tooShort, notInWordList, alreadyGuessed, hardMode }
 
 enum HardModeViolationKind {
   /// A green letter was moved away from its known position.
@@ -105,6 +86,9 @@ class WordleRejection {
 
   const WordleRejection.notInWordList()
     : this(WordleRejectionKind.notInWordList);
+
+  const WordleRejection.alreadyGuessed()
+    : this(WordleRejectionKind.alreadyGuessed);
 
   WordleRejection.hardMode(HardModeViolation violation)
     : this(WordleRejectionKind.hardMode, violation: violation);

@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/l10n/app_strings_provider.dart';
 import '../../../../core/layout/responsive_scale.dart';
-import '../domain/wordle_models.dart';
-import '../state/wordle_controller.dart';
-import '../state/wordle_settings.dart';
 import '../../../../widgets/game_chip.dart';
 import '../../../../widgets/game_chip_menu.dart';
+import '../../wordle_shared/domain/wordle_models.dart';
+import '../../wordle_shared/widgets/wordle_length_menu.dart';
+import '../state/wordle_controller.dart';
+import '../state/wordle_settings.dart';
 
 /// Word length, difficulty, hard mode and the two game actions.
 class WordleToolbar extends ConsumerWidget {
@@ -29,7 +30,6 @@ class WordleToolbar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(appStringsProvider);
     final settings = ref.watch(wordleSettingsProvider);
-    final availableLengths = ref.watch(wordleAvailableLengthsProvider).value;
     final controller = ref.read(wordleGameProvider.notifier);
 
     return Wrap(
@@ -38,30 +38,10 @@ class WordleToolbar extends ConsumerWidget {
       spacing: context.rs(8),
       runSpacing: context.rs(8),
       children: [
-        GameChipMenu<int>(
-          tooltip: strings.wordleLengthLabel,
+        WordleLengthMenu(
+          solutionList: settings.difficulty,
           selected: settings.wordLength,
           onSelected: controller.changeWordLength,
-          options: [
-            for (
-              var length = kWordleMinLength;
-              length <= kWordleMaxLength;
-              length++
-            )
-              GameMenuOption(
-                value: length,
-                label: strings.wordleLetterCount(length),
-                // Lengths the active list cannot fill stay visible but
-                // unselectable, so the rule is obvious rather than hidden.
-                enabled: availableLengths?.contains(length) ?? false,
-                disabledHint: strings.wordleLengthUnavailable,
-              ),
-          ],
-          child: GameChip(
-            icon: Icons.straighten_rounded,
-            label: strings.wordleLetterCount(settings.wordLength),
-            trailingIcon: Icons.expand_more_rounded,
-          ),
         ),
         GameChipMenu<WordleDifficulty>(
           tooltip: strings.wordleDifficultyLabel,

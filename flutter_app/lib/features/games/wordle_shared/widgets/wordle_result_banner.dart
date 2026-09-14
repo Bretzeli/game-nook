@@ -11,17 +11,19 @@ import '../../../../core/theme/app_theme_extension.dart';
 import '../../../../widgets/game_action_button.dart';
 import 'wordle_palette.dart';
 
-/// Slides in once the last row has finished flipping: a compliment on a win,
-/// the solution on a loss.
+/// Slides in once the last row has finished flipping: how the round went, the
+/// solution unless the board already shows it off, the dictionary entry for
+/// it and the way into the next round.
 class WordleResultBanner extends ConsumerWidget {
   const WordleResultBanner({
     super.key,
     required this.strings,
     required this.languageCode,
-    required this.won,
     required this.solution,
-    required this.attempts,
-    required this.maxAttempts,
+    required this.success,
+    required this.icon,
+    required this.title,
+    this.detail,
     required this.onNewGame,
   });
 
@@ -30,10 +32,18 @@ class WordleResultBanner extends ConsumerWidget {
   /// Which language's dictionary the solution should be looked up in.
   final String languageCode;
 
-  final bool won;
   final String solution;
-  final int attempts;
-  final int maxAttempts;
+
+  /// Whether the round ended the way the player wanted, which tints the
+  /// banner in the "correct" colour rather than the theme's second accent.
+  final bool success;
+
+  final IconData icon;
+  final String title;
+
+  /// The line under [title]. When `null`, the solution is revealed there.
+  final String? detail;
+
   final VoidCallback onNewGame;
 
   @override
@@ -41,7 +51,7 @@ class WordleResultBanner extends ConsumerWidget {
     final decor = context.decor;
     final theme = Theme.of(context);
     final palette = WordlePalette.of(context);
-    final accent = won ? palette.correct : decor.accentSecondary;
+    final accent = success ? palette.correct : decor.accentSecondary;
 
     // Null until the dictionary has been read, and stays null when it has
     // nothing on this word — so the question mark simply never appears.
@@ -73,11 +83,7 @@ class WordleResultBanner extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                won ? Icons.emoji_events_rounded : Icons.lightbulb_rounded,
-                color: accent,
-                size: context.rs(20),
-              ),
+              Icon(icon, color: accent, size: context.rs(20)),
               SizedBox(width: context.rs(10)),
               Flexible(
                 child: Column(
@@ -85,22 +91,21 @@ class WordleResultBanner extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      won
-                          ? strings.wordleWinTitle(attempts)
-                          : strings.wordleLoseTitle,
+                      title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: accent,
                       ),
                     ),
                     SizedBox(height: context.rs(1)),
-                    won
-                        ? Text(
-                            strings.wordleWinDetail(attempts, maxAttempts),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: decor.subtleTextColor,
-                            ),
-                          )
-                        : _Solution(solution: solution, strings: strings),
+                    switch (detail) {
+                      final detail? => Text(
+                        detail,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: decor.subtleTextColor,
+                        ),
+                      ),
+                      null => _Solution(solution: solution, strings: strings),
+                    },
                   ],
                 ),
               ),
@@ -234,56 +239,5 @@ class _ExplainButtonState extends State<_ExplainButton> {
         .animate()
         .fadeIn(duration: 240.ms)
         .scaleXY(begin: 0.7, end: 1, curve: Curves.easeOutBack);
-  }
-}
-
-class _NewGameButton extends StatefulWidget {
-  const _NewGameButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<_NewGameButton> createState() => _NewGameButtonState();
-}
-
-class _NewGameButtonState extends State<_NewGameButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final decor = context.decor;
-    final theme = Theme.of(context);
-    final filled = decor.buttonStyle != AppButtonStyle.outlined;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: EdgeInsets.symmetric(
-            horizontal: context.rs(14),
-            vertical: context.rs(9),
-          ),
-          decoration: BoxDecoration(
-            color: filled
-                ? decor.accentColor.withValues(alpha: _hovered ? 1 : 0.85)
-                : decor.accentColor.withValues(alpha: _hovered ? 0.2 : 0.1),
-            borderRadius: decor.buttonRadius,
-            border: Border.all(color: decor.accentColor, width: 1),
-          ),
-          child: Text(
-            widget.label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: filled ? Colors.white : decor.accentColor,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

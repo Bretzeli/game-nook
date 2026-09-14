@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_app/core/words/word_alphabet.dart';
-import 'package:flutter_app/features/games/wordle/domain/wordle_models.dart';
-import 'package:flutter_app/features/games/wordle/domain/wordle_rules.dart';
+import 'package:flutter_app/features/games/wordle_shared/domain/wordle_models.dart';
+import 'package:flutter_app/features/games/wordle_shared/domain/wordle_rules.dart';
 
 WordleRow _row(String guess, String solution) =>
     WordleRow(word: guess, statuses: evaluateGuess(guess, solution));
@@ -144,6 +144,48 @@ void main() {
           reason: '$candidate is consistent, so hard mode must accept it',
         );
       }
+    });
+  });
+
+  group('wordsConsistentWithRow', () {
+    const words = [
+      'SNAKE', 'SHAVE', 'SPINE', 'SEDAN', 'CRANE', 'GEESE', 'EERIE', 'THERE',
+      'EDGES', 'SEEDS', 'TEASE', 'REEVE', 'ELEGY', 'EARLY', 'LEVEL', 'SPEAR',
+      'KÄFER', 'GRÜßE', 'SÄGEN', 'ÄRGER', 'CRANES', 'AXE', 'ĀBCDE',
+    ];
+
+    test('keeps exactly the words isConsistentWithRow keeps', () {
+      for (final solution in words) {
+        for (final guess in words) {
+          if (guess.length != solution.length) continue;
+          final row = _row(guess, solution);
+
+          expect(
+            wordsConsistentWithRow(words, row),
+            [
+              for (final word in words)
+                if (isConsistentWithRow(word, row)) word,
+            ],
+            reason: '$guess against $solution',
+          );
+        }
+      }
+    });
+
+    test('a row filled in by giving up rules nothing out', () {
+      const row = WordleRow(
+        word: 'SNAKE',
+        statuses: [
+          LetterStatus.correct,
+          LetterStatus.correct,
+          LetterStatus.correct,
+          LetterStatus.correct,
+          LetterStatus.correct,
+        ],
+        isSolution: true,
+      );
+
+      expect(wordsConsistentWithRow(words, row), words);
     });
   });
 

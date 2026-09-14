@@ -158,6 +158,9 @@ class AppStrings {
   String get wordleNotInWordList =>
       _isGerman ? 'Nicht in der Wortliste' : 'Not in word list';
 
+  String get wordleAlreadyGuessed =>
+      _isGerman ? 'Schon geraten' : 'Already guessed';
+
   String wordleHardModeFixedLetter(int position, String letter) => _isGerman
       ? '$position. Buchstabe muss $letter sein'
       : '${_ordinal(position)} letter must be $letter';
@@ -208,6 +211,70 @@ class AppStrings {
       : 'The word list could not be loaded.';
 
   String get wordleRetry => _isGerman ? 'Erneut versuchen' : 'Try again';
+
+  // --- Don't Wordle -------------------------------------------------------
+
+  String get dontWordleGuessesLabel => _isGerman ? 'Versuche' : 'Guesses';
+
+  /// How many guesses have to be survived.
+  String dontWordleGuessCount(int count) =>
+      _isGerman ? '$count Versuche' : '$count guesses';
+
+  String get dontWordleGuessesHint => _isGerman
+      ? 'Eine andere Anzahl startet ein neues Spiel'
+      : 'A different number starts a new game';
+
+  String get dontWordleHintDescription => _isGerman
+      ? 'Füllt ein Wort ein, das zu allen Hinweisen passt – aber nie die Lösung'
+      : 'Fills in a word that fits every hint – but never the solution';
+
+  /// How many words, of every list, still fit every hint.
+  String dontWordleWordsLeft(int count) {
+    if (_isGerman) {
+      return count == 1 ? '1 Wort übrig' : '${_groupDigits(count)} Wörter übrig';
+    }
+    return count == 1 ? '1 word left' : '${_groupDigits(count)} words left';
+  }
+
+  String get dontWordleWordsLeftHint => _isGerman
+      ? 'Wörter aus allen Wortlisten, die noch zu allen Hinweisen passen. '
+            'Bleibt nur eins übrig, hast du verloren.'
+      : 'Words from every word list that still fit every hint. If only one '
+            'is left, you lose.';
+
+  /// How many words that could be the solution still fit every hint.
+  String dontWordleSolutionsLeft(int count) {
+    if (_isGerman) {
+      return count == 1
+          ? '1 mögliche Lösung'
+          : '${_groupDigits(count)} mögliche Lösungen';
+    }
+    return count == 1
+        ? '1 possible solution'
+        : '${_groupDigits(count)} possible solutions';
+  }
+
+  String get dontWordleSolutionsLeftHint => _isGerman
+      ? 'Wörter, die noch zu allen Hinweisen passen und die Lösung sein können'
+      : 'Words that still fit every hint and can be the solution';
+
+  String get dontWordleSurvived => _isGerman
+      ? 'Überlebt! Jetzt finde das Wort'
+      : 'You survived! Now find the word';
+
+  String get dontWordleSolvedTitle => _isGerman ? 'Meisterhaft!' : 'Flawless!';
+
+  String dontWordleSolvedDetail(int attempt, int total) => _isGerman
+      ? 'Überlebt und mit Versuch $attempt von $total gefunden'
+      : 'Survived, then found it on try $attempt of $total';
+
+  String get dontWordleSurvivedTitle => _isGerman ? 'Überlebt!' : 'Survived!';
+
+  String get dontWordleHitTitle =>
+      _isGerman ? 'Hoppla, das war das Wort!' : 'Oops, that was the word!';
+
+  String get dontWordleCorneredTitle =>
+      _isGerman ? 'Sackgasse!' : 'Cornered!';
 
   // --- Spelling Bee -------------------------------------------------------
 
@@ -462,6 +529,18 @@ class AppStrings {
       : 'The puzzle could not be created.';
 
   String get sudokuRetry => _isGerman ? 'Erneut versuchen' : 'Try again';
+
+  /// [n] with thousands separators, the way the current language writes them.
+  String _groupDigits(int n) {
+    final digits = n.abs().toString();
+    final separator = _isGerman ? '.' : ',';
+    final buffer = StringBuffer(n < 0 ? '-' : '');
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(separator);
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
 
   String _ordinal(int n) {
     if (n % 100 >= 11 && n % 100 <= 13) return '${n}th';

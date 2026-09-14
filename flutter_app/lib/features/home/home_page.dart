@@ -39,7 +39,7 @@ class HomePage extends ConsumerWidget {
       (GameId.wordle, Icons.grid_on_rounded, '/wordle', true),
       (GameId.spellingBee, Icons.hexagon_rounded, '/spelling-bee', true),
       (GameId.sudoku, Icons.grid_3x3_rounded, '/sudoku', true),
-      (GameId.dontWordle, Icons.block_rounded, '/dont-wordle', false),
+      (GameId.dontWordle, Icons.block_rounded, '/dont-wordle', true),
       (GameId.wormdle, null, '/wormdle', false),
     ];
 

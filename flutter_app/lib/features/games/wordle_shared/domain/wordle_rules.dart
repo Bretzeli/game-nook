@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'wordle_models.dart';
 
 /// Scores [guess] against [solution] with the usual two-pass rule: exact hits
@@ -38,17 +40,74 @@ List<LetterStatus> evaluateGuess(String guess, String solution) {
 /// to the solution than one that was already excluded — and, because it
 /// honours all greens, yellows and greys by construction, it is always a legal
 /// guess in hard mode too.
-bool isConsistentWith(String candidate, List<WordleRow> rows) {
-  for (final row in rows) {
-    if (row.isSolution) continue;
-    if (row.word.length != candidate.length) continue;
+bool isConsistentWith(String candidate, List<WordleRow> rows) =>
+    rows.every((row) => isConsistentWithRow(candidate, row));
 
-    final replay = evaluateGuess(row.word, candidate);
-    for (var i = 0; i < replay.length; i++) {
-      if (replay[i] != row.statuses[i]) return false;
-    }
+/// [isConsistentWith] for a single row, for narrowing a candidate list one
+/// guess at a time. A row that taught nothing about [candidate] — the given-up
+/// solution, or a word of another length — never rules it out.
+bool isConsistentWithRow(String candidate, WordleRow row) {
+  if (row.isSolution || row.word.length != candidate.length) return true;
+
+  final replay = evaluateGuess(row.word, candidate);
+  for (var i = 0; i < replay.length; i++) {
+    if (replay[i] != row.statuses[i]) return false;
   }
   return true;
+}
+
+/// The [words] that [isConsistentWithRow] keeps, for sweeping whole word
+/// lists: tens of thousands of words are checked against a guess the moment
+/// it is submitted, so the replay runs on a reused letter count instead of
+/// allocating per word.
+List<String> wordsConsistentWithRow(Iterable<String> words, WordleRow row) {
+  final guess = row.word;
+  if (row.isSolution || guess.codeUnits.any((unit) => unit > 0xFF)) {
+    return [
+      for (final word in words)
+        if (isConsistentWithRow(word, row)) word,
+    ];
+  }
+
+  // Letters of the candidate that the guess did not hit in place, by code
+  // unit; every supported letter fits in a byte.
+  final unmatched = Uint8List(0x100);
+
+  bool fits(String word) {
+    if (word.length != guess.length) return true;
+    final length = guess.length;
+
+    for (var i = 0; i < length; i++) {
+      final unit = word.codeUnitAt(i);
+      final hit = guess.codeUnitAt(i) == unit;
+      if (hit != (row.statuses[i] == LetterStatus.correct) || unit > 0xFF) {
+        for (var j = 0; j < i; j++) {
+          unmatched[word.codeUnitAt(j) & 0xFF] = 0;
+        }
+        return unit > 0xFF && isConsistentWithRow(word, row);
+      }
+      if (!hit) unmatched[unit]++;
+    }
+
+    var matches = true;
+    for (var i = 0; i < length && matches; i++) {
+      if (row.statuses[i] == LetterStatus.correct) continue;
+      final unit = guess.codeUnitAt(i);
+      final present = unmatched[unit] > 0;
+      if (present) unmatched[unit]--;
+      matches = present == (row.statuses[i] == LetterStatus.present);
+    }
+
+    for (var i = 0; i < length; i++) {
+      unmatched[word.codeUnitAt(i)] = 0;
+    }
+    return matches;
+  }
+
+  return [
+    for (final word in words)
+      if (fits(word)) word,
+  ];
 }
 
 /// Best status seen per letter, used to colour the keyboard. Only the first

@@ -5,88 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_app/app.dart';
 import 'package:flutter_app/core/dictionary/dictionary_repository.dart';
-import 'package:flutter_app/core/dictionary/word_definition.dart';
 import 'package:flutter_app/core/dictionary/word_definition_dialog.dart';
-import 'package:flutter_app/features/games/wordle/data/wordle_word_repository.dart';
-import 'package:flutter_app/features/games/wordle/domain/wordle_models.dart';
+import 'package:flutter_app/features/games/wordle_shared/data/wordle_word_repository.dart';
 import 'package:flutter_app/features/games/wordle/state/wordle_controller.dart';
 import 'package:flutter_app/widgets/game_chip.dart';
-import 'package:flutter_app/features/games/wordle/widgets/wordle_grid.dart';
-import 'package:flutter_app/features/games/wordle/widgets/wordle_keyboard.dart';
-import 'package:flutter_app/features/games/wordle/widgets/wordle_tile.dart';
+import 'package:flutter_app/features/games/wordle_shared/widgets/wordle_grid.dart';
+import 'package:flutter_app/features/games/wordle_shared/widgets/wordle_keyboard.dart';
+import 'package:flutter_app/features/games/wordle_shared/widgets/wordle_tile.dart';
 
-/// Reading the word lists is real async work that the fake clock inside
-/// `testWidgets` cannot drive, so it is done up front and handed to the app as
-/// a warm repository. Everything the page then asks for resolves as a
-/// microtask, exactly like a second visit to the game does.
-Future<WordleWordRepository> _warmRepository(
-  WidgetTester tester,
-  List<String> languages,
-) async {
-  final repository = WordleWordRepository();
-  await tester.runAsync(() async {
-    for (final language in languages) {
-      await repository.availableLengths(language, WordleDifficulty.normal);
-      await repository.solutionPool(
-        language,
-        WordleDifficulty.normal,
-        kWordleDefaultLength,
-      );
-      await repository.acceptedWords(language, kWordleDefaultLength);
-    }
-  });
-  return repository;
-}
-
-/// A repository serving one fixed pair of words, so the candidate set is
-/// exhausted after a single guess.
-class _TwoWordRepository extends WordleWordRepository {
-  @override
-  Future<List<int>> availableLengths(
-    String languageCode,
-    WordleDifficulty difficulty,
-  ) async => const [5];
-
-  @override
-  Future<List<String>> solutionPool(
-    String languageCode,
-    WordleDifficulty difficulty,
-    int length,
-  ) async => const ['CRANE', 'SLATE'];
-
-  @override
-  Future<Set<String>> acceptedWords(String languageCode, int length) async =>
-      const {'CRANE', 'SLATE'};
-}
-
-WordleWordRepository _twoWordRepository() => _TwoWordRepository();
-
-/// Stands in for the bundled dictionaries, which are far too large to decode
-/// under a widget test's fake clock. [knows] decides whether the solution —
-/// whichever word the game picked — has an entry.
-class _FakeDictionary extends DictionaryRepository {
-  _FakeDictionary({required this.knows});
-
-  final bool knows;
-
-  @override
-  Future<WordDefinition?> define(String languageCode, String word) async {
-    if (!knows) return null;
-    return WordDefinition(
-      word: word.toUpperCase(),
-      meanings: const [
-        WordMeaning(
-          partOfSpeech: 'Noun',
-          definition: 'a large long-necked wading bird',
-          relatedTerms: [],
-          examples: ['a crane took off from the reeds'],
-        ),
-      ],
-      synonyms: const ['heron'],
-      antonyms: const [],
-    );
-  }
-}
+import 'wordle_fixture.dart';
 
 Future<void> _openWordle(
   WidgetTester tester, {
@@ -94,14 +21,14 @@ Future<void> _openWordle(
   WordleWordRepository? repository,
   DictionaryRepository? dictionary,
 }) async {
-  final resolved = repository ?? await _warmRepository(tester, languages);
+  final resolved = repository ?? await warmWordRepository(tester, languages);
 
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         wordleWordRepositoryProvider.overrideWithValue(resolved),
         dictionaryRepositoryProvider.overrideWithValue(
-          dictionary ?? _FakeDictionary(knows: false),
+          dictionary ?? FakeDictionary(knows: false),
         ),
       ],
       child: const GameNookApp(),
@@ -133,14 +60,6 @@ Finder _onBoard(String letter) => find.descendant(
 
 Finder _hintChip() =>
     find.ancestor(of: find.text('Hint'), matching: find.byType(GameChip));
-
-/// flutter_animate defers a freshly mounted animation by a zero timer, so one
-/// settle pass can end with that timer still queued.
-Future<void> _settle(WidgetTester tester) async {
-  await tester.pumpAndSettle();
-  await tester.pump(const Duration(milliseconds: 1));
-  await tester.pumpAndSettle();
-}
 
 void main() {
   for (final (name, size) in const [
@@ -204,7 +123,7 @@ void main() {
 
     // The message clears itself again.
     await tester.pump(const Duration(seconds: 3));
-    await _settle(tester);
+    await settle(tester);
     expect(find.text('Not enough letters'), findsNothing);
   });
 
@@ -221,7 +140,7 @@ void main() {
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    final solution = container.read(wordleGameProvider).solution;
+    final solution = container.read(wordleGameProvider).board.solution;
     for (final letter in solution.split('')) {
       container.read(wordleGameProvider.notifier).typeLetter(letter);
     }
@@ -235,7 +154,7 @@ void main() {
     expect(find.text('Genius!'), findsNothing);
 
     await tester.pump(revealDurationFor(solution.length));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.text('Genius!'), findsOneWidget);
     expect(find.text('In 1 of 6 tries'), findsOneWidget);
@@ -256,7 +175,7 @@ void main() {
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    final solution = container.read(wordleGameProvider).solution;
+    final solution = container.read(wordleGameProvider).board.solution;
     for (final letter in solution.split('')) {
       container.read(wordleGameProvider.notifier).typeLetter(letter);
     }
@@ -268,7 +187,7 @@ void main() {
     // where the shimmer effect's own padding used to overflow the Column.
     await tester.pump(revealDurationFor(solution.length));
     await tester.pump(const Duration(milliseconds: 1500));
-    await _settle(tester);
+    await settle(tester);
 
     expect(tester.takeException(), isNull);
   });
@@ -288,7 +207,7 @@ void main() {
     );
     final controller = container.read(wordleGameProvider.notifier);
     final game = container.read(wordleGameProvider);
-    final columns = game.wordLength;
+    final columns = game.board.wordLength;
 
     Future<void> play(String word) async {
       for (final letter in word.split('')) {
@@ -298,7 +217,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
       await tester.pump(revealDurationFor(columns));
-      await _settle(tester);
+      await settle(tester);
     }
 
     // A wrong opener first, so the winning row has a scored row directly
@@ -306,13 +225,13 @@ void main() {
     await play(
       game.solutionPool.firstWhere(
         (word) =>
-            word != game.solution && game.acceptedWords.contains(word),
+            word != game.board.solution && game.board.acceptedWords.contains(word),
       ),
     );
-    await play(game.solution);
+    await play(game.board.solution);
     // Let the bow and its shimmer run all the way out.
     await tester.pump(const Duration(seconds: 2));
-    await _settle(tester);
+    await settle(tester);
 
     // Painted position, not layout: the lift is a paint-time transform.
     double rowTop(int row) =>
@@ -340,16 +259,16 @@ void main() {
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    final solution = container.read(wordleGameProvider).solution;
+    final solution = container.read(wordleGameProvider).board.solution;
 
     await tester.tap(find.text('Give up'));
     await tester.pump();
     await tester.pump(revealDurationFor(solution.length));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.text('Bad luck!'), findsOneWidget);
     expect(find.text(solution), findsOneWidget);
-    expect(container.read(wordleGameProvider).rows.single.isSolution, isTrue);
+    expect(container.read(wordleGameProvider).board.rows.single.isSolution, isTrue);
   });
 
   testWidgets('the revealed solution can be looked up in the dictionary', (
@@ -359,23 +278,23 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await _openWordle(tester, dictionary: _FakeDictionary(knows: true));
+    await _openWordle(tester, dictionary: FakeDictionary(knows: true));
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    final solution = container.read(wordleGameProvider).solution;
+    final solution = container.read(wordleGameProvider).board.solution;
 
     await tester.tap(find.text('Give up'));
     await tester.pump();
     await tester.pump(revealDurationFor(solution.length));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.byIcon(Icons.question_mark_rounded), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.question_mark_rounded));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.byType(WordDefinitionDialog), findsOneWidget);
     expect(find.text('Dictionary'), findsOneWidget);
@@ -384,7 +303,7 @@ void main() {
     expect(find.text('heron'), findsOneWidget);
 
     await tester.tap(find.text('Close'));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.byType(WordDefinitionDialog), findsNothing);
     // The banner is still there to ask again from.
@@ -396,13 +315,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await _openWordle(tester, dictionary: _FakeDictionary(knows: true));
+    await _openWordle(tester, dictionary: FakeDictionary(knows: true));
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    final solution = container.read(wordleGameProvider).solution;
+    final solution = container.read(wordleGameProvider).board.solution;
     for (final letter in solution.split('')) {
       container.read(wordleGameProvider.notifier).typeLetter(letter);
     }
@@ -415,11 +334,11 @@ void main() {
     expect(find.byIcon(Icons.question_mark_rounded), findsNothing);
 
     await tester.pump(revealDurationFor(solution.length));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.text('Genius!'), findsOneWidget);
     await tester.tap(find.byIcon(Icons.question_mark_rounded));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.byType(WordDefinitionDialog), findsOneWidget);
   });
@@ -431,18 +350,18 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await _openWordle(tester, dictionary: _FakeDictionary(knows: false));
+    await _openWordle(tester, dictionary: FakeDictionary(knows: false));
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    final solution = container.read(wordleGameProvider).solution;
+    final solution = container.read(wordleGameProvider).board.solution;
 
     await tester.tap(find.text('Give up'));
     await tester.pump();
     await tester.pump(revealDurationFor(solution.length));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.text('Bad luck!'), findsOneWidget);
     expect(find.byIcon(Icons.question_mark_rounded), findsNothing);
@@ -467,10 +386,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
     await tester.pump(revealDurationFor(5));
-    await _settle(tester);
+    await settle(tester);
 
     await tester.tap(find.byTooltip('Back to home'));
-    await _settle(tester);
+    await settle(tester);
     await tester.tap(find.text('Wordle'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -496,7 +415,7 @@ void main() {
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    expect(container.read(wordleGameProvider).typedWord, isEmpty);
+    expect(container.read(wordleGameProvider).board.typedWord, isEmpty);
 
     // The counter starts at zero and lives inside the hint button itself.
     expect(
@@ -508,8 +427,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     final game = container.read(wordleGameProvider);
-    expect(game.typedWord.length, game.wordLength);
-    expect(game.typedWord, isNot(game.solution));
+    expect(game.board.typedWord.length, game.board.wordLength);
+    expect(game.board.typedWord, isNot(game.board.solution));
     expect(game.hintsUsed, 1);
     expect(
       find.descendant(of: _hintChip(), matching: find.text('1')),
@@ -519,9 +438,9 @@ void main() {
     // The filled word is a legal guess.
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
-    await tester.pump(revealDurationFor(game.wordLength));
-    await _settle(tester);
-    expect(container.read(wordleGameProvider).rows, hasLength(1));
+    await tester.pump(revealDurationFor(game.board.wordLength));
+    await settle(tester);
+    expect(container.read(wordleGameProvider).board.rows, hasLength(1));
   });
 
   testWidgets('the hint offers to solve when only the solution is left', (
@@ -531,13 +450,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await _openWordle(tester, repository: _twoWordRepository());
+    await _openWordle(tester, repository: FixedWordRepository(const ['CRANE', 'SLATE']));
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(WordleGrid)),
       listen: false,
     );
-    final solution = container.read(wordleGameProvider).solution;
+    final solution = container.read(wordleGameProvider).board.solution;
 
     // Burn the only alternative, so the solution is all that is left.
     await tester.tap(find.text('Hint'));
@@ -545,24 +464,24 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
     await tester.pump(revealDurationFor(solution.length));
-    await _settle(tester);
+    await settle(tester);
 
     await tester.tap(find.text('Hint'));
-    await _settle(tester);
+    await settle(tester);
 
     expect(find.text('Only the solution is left'), findsOneWidget);
 
     // Declining leaves the row alone.
     await tester.tap(find.text('Keep trying'));
-    await _settle(tester);
-    expect(container.read(wordleGameProvider).typedWord, isEmpty);
+    await settle(tester);
+    expect(container.read(wordleGameProvider).board.typedWord, isEmpty);
 
     await tester.tap(find.text('Hint'));
-    await _settle(tester);
+    await settle(tester);
     await tester.tap(find.text('Fill it in'));
-    await _settle(tester);
+    await settle(tester);
 
-    expect(container.read(wordleGameProvider).typedWord, solution);
+    expect(container.read(wordleGameProvider).board.typedWord, solution);
     expect(container.read(wordleGameProvider).hintsUsed, 2);
   });
 
@@ -574,7 +493,7 @@ void main() {
     await _openWordle(tester, languages: const ['en', 'de']);
 
     await tester.tap(find.byTooltip('Language'));
-    await _settle(tester);
+    await settle(tester);
     await tester.tap(find.text('Deutsch').last);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));

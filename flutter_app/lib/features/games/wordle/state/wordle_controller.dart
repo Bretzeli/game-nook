@@ -3,32 +3,17 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/l10n/locale_notifier.dart';
-import '../data/wordle_word_repository.dart';
-import '../../../../core/words/word_alphabet.dart';
-import '../domain/wordle_models.dart';
-import '../domain/wordle_rules.dart';
+import '../../wordle_shared/domain/wordle_board.dart';
+import '../../wordle_shared/domain/wordle_models.dart';
+import '../../wordle_shared/domain/wordle_rules.dart';
+import '../../wordle_shared/state/wordle_board_controller.dart';
+import '../domain/wordle_game_models.dart';
 import 'wordle_game_state.dart';
 import 'wordle_settings.dart';
 
-final wordleWordRepositoryProvider = Provider<WordleWordRepository>((ref) {
-  ref.keepAlive();
-  return WordleWordRepository();
-});
-
-/// Word lengths the picker may offer for the current language and difficulty.
-final wordleAvailableLengthsProvider = FutureProvider<List<int>>((ref) async {
-  final languageCode = ref.watch(appLocaleProvider).languageCode;
-  final difficulty = ref.watch(
-    wordleSettingsProvider.select((settings) => settings.difficulty),
-  );
-  return ref
-      .watch(wordleWordRepositoryProvider)
-      .availableLengths(languageCode, difficulty);
-});
-
-class WordleGameController extends Notifier<WordleGameState> {
+class WordleGameController extends Notifier<WordleGameState>
+    with WordleBoardController<WordleGameState> {
   final Random _random = Random();
-  int _loadToken = 0;
 
   @override
   WordleGameState build() {
@@ -53,10 +38,11 @@ class WordleGameController extends Notifier<WordleGameState> {
   }
 
   /// Starts a new round with the currently selected settings.
+  @override
   void newGame() {
     final settings = ref.read(wordleSettingsProvider);
     _start(
-      languageCode: state.languageCode,
+      languageCode: state.board.languageCode,
       wordLength: settings.wordLength,
       difficulty: settings.difficulty,
     );
@@ -79,77 +65,23 @@ class WordleGameController extends Notifier<WordleGameState> {
     ref.read(wordleSettingsProvider.notifier).setHardMode(enabled);
   }
 
-  void typeLetter(String character) {
-    if (!state.isPlaying || state.cursor >= state.wordLength) return;
-    final letter = WordAlphabet.normalizeChar(character, state.languageCode);
-    if (letter == null) return;
-
-    final input = [...state.input];
-    input[state.cursor] = letter;
-    state = state.copyWith(input: input, cursor: state.cursor + 1);
-  }
-
-  void backspace() {
-    if (!state.isPlaying) return;
-    final input = [...state.input];
-
-    // A tapped-on letter is "selected" at the cursor itself; deleting should
-    // clear that slot in place rather than the one before it.
-    if (state.cursor < state.wordLength && input[state.cursor].isNotEmpty) {
-      input[state.cursor] = '';
-      state = state.copyWith(input: input, cursor: state.cursor);
-      return;
-    }
-
-    // Nothing occupies the cursor slot (the normal post-typing position), so
-    // fall back to auto-selecting and clearing the last filled letter.
-    final target = state.cursor > 0 ? state.cursor - 1 : 0;
-    input[target] = '';
-    state = state.copyWith(input: input, cursor: target);
-  }
-
-  /// Lets the player overwrite from a specific slot instead of the start.
-  void selectSlot(int index) {
-    if (!state.isPlaying || index < 0 || index >= state.wordLength) return;
-    state = state.copyWith(cursor: index);
-  }
-
-  void moveCursor(int delta) {
-    if (!state.isPlaying) return;
-    final target = (state.cursor + delta).clamp(0, state.wordLength);
-    if (target == state.cursor) return;
-    state = state.copyWith(cursor: target);
-  }
-
-  /// Submits the typed row. Returns `null` when it was accepted, otherwise the
-  /// reason it was turned down.
+  @override
   WordleRejection? submit() {
     if (!state.isPlaying) return null;
-    if (!state.isInputComplete) return const WordleRejection.tooShort();
 
-    final guess = state.typedWord;
-    if (!state.acceptedWords.contains(guess) && guess != state.solution) {
-      return const WordleRejection.notInWordList();
-    }
+    final rejection = state.board.validateInput(
+      hardMode: ref.read(wordleSettingsProvider).hardMode,
+    );
+    if (rejection != null) return rejection;
 
-    if (ref.read(wordleSettingsProvider).hardMode) {
-      final violation = HardModeConstraints.fromRows(state.rows).validate(guess);
-      if (violation != null) return WordleRejection.hardMode(violation);
-    }
-
-    final rows = [
-      ...state.rows,
-      WordleRow(word: guess, statuses: evaluateGuess(guess, state.solution)),
-    ];
-    final won = guess == state.solution;
+    final board = state.board.submitInput();
+    final won = board.rows.last.word == board.solution;
 
     state = state.copyWith(
-      rows: rows,
-      input: List<String>.filled(state.wordLength, ''),
-      cursor: 0,
+      board: board,
       phase: won
           ? WordlePhase.won
-          : rows.length >= state.maxAttempts
+          : board.rows.length >= state.maxAttempts
           ? WordlePhase.lost
           : WordlePhase.playing,
     );
@@ -163,18 +95,19 @@ class WordleGameController extends Notifier<WordleGameState> {
   /// the game outright. When nothing but the solution is left there is nothing
   /// closer to offer, and the caller gets to ask whether to solve instead.
   WordleHintOutcome hint() {
-    if (!state.isPlaying || state.solution.isEmpty) {
+    final board = state.board;
+    if (!state.isPlaying || !board.hasSolution) {
       return WordleHintOutcome.unavailable;
     }
 
-    final candidates = <String>[];
-    for (final word in state.solutionPool) {
-      if (word == state.solution) continue;
-      // Only offer words the player would actually be allowed to submit.
-      if (!state.acceptedWords.contains(word)) continue;
-      if (!isConsistentWith(word, state.rows)) continue;
-      candidates.add(word);
-    }
+    final candidates = <String>[
+      for (final word in state.solutionPool)
+        if (word != board.solution &&
+            // Only offer words the player would actually be allowed to submit.
+            board.acceptedWords.contains(word) &&
+            isConsistentWith(word, board.rows))
+          word,
+    ];
 
     if (candidates.isEmpty) return WordleHintOutcome.onlySolutionLeft;
 
@@ -185,14 +118,13 @@ class WordleGameController extends Notifier<WordleGameState> {
   /// Writes the solution into the row after the player took up the offer to
   /// solve. It still counts as a hint, and is still theirs to submit.
   void fillSolution() {
-    if (!state.isPlaying || state.solution.isEmpty) return;
-    _fillInput(state.solution);
+    if (!state.isPlaying || !state.board.hasSolution) return;
+    _fillInput(state.board.solution);
   }
 
   void _fillInput(String word) {
     state = state.copyWith(
-      input: word.split(''),
-      cursor: state.wordLength,
+      board: state.board.fillInput(word),
       hintsUsed: state.hintsUsed + 1,
     );
   }
@@ -200,23 +132,8 @@ class WordleGameController extends Notifier<WordleGameState> {
   /// Ends the round and writes the solution into the next free row.
   void giveUp() {
     if (!state.canGiveUp) return;
-
-    final rows = [
-      ...state.rows,
-      WordleRow(
-        word: state.solution,
-        statuses: List<LetterStatus>.filled(
-          state.wordLength,
-          LetterStatus.correct,
-        ),
-        isSolution: true,
-      ),
-    ];
-
     state = state.copyWith(
-      rows: rows,
-      input: List<String>.filled(state.wordLength, ''),
-      cursor: 0,
+      board: state.board.revealSolution(),
       phase: WordlePhase.lost,
     );
   }
@@ -225,72 +142,38 @@ class WordleGameController extends Notifier<WordleGameState> {
     required String languageCode,
     required int wordLength,
     required WordleDifficulty difficulty,
-  }) async {
-    final token = ++_loadToken;
-    // Captured while it is guaranteed to be valid: after an await this tells
-    // us whether the provider was disposed or rebuilt in the meantime.
-    final ref = this.ref;
-    final repository = ref.read(wordleWordRepositoryProvider);
+  }) {
+    return loadRound(
+      languageCode: languageCode,
+      difficulty: difficulty,
+      wordLength: wordLength,
+      onLoaded: (words) {
+        if (words.wordLength != wordLength) {
+          ref
+              .read(wordleSettingsProvider.notifier)
+              .setWordLength(words.wordLength);
+        }
 
-    try {
-      final lengths = await repository.availableLengths(
-        languageCode,
-        difficulty,
-      );
-      final length = _resolveLength(lengths, wordLength);
-
-      final pool = await repository.solutionPool(
-        languageCode,
-        difficulty,
-        length,
-      );
-      final accepted = await repository.acceptedWords(languageCode, length);
-      if (token != _loadToken || !ref.mounted) return;
-
-      if (pool.isEmpty) {
-        state = WordleGameState.loading(
-          languageCode: languageCode,
-          wordLength: wordLength,
+        final pool = words.solutionPool;
+        state = WordleGameState(
+          board: WordleBoard.start(
+            languageCode: languageCode,
+            solution: pool[_random.nextInt(pool.length)],
+            acceptedWords: words.acceptedWords,
+            round: state.board.round + 1,
+          ),
           difficulty: difficulty,
-        ).copyWith(phase: WordlePhase.failed);
-        return;
-      }
-
-      if (length != wordLength) {
-        ref.read(wordleSettingsProvider.notifier).setWordLength(length);
-      }
-
-      state = WordleGameState(
-        languageCode: languageCode,
-        wordLength: length,
-        difficulty: difficulty,
-        phase: WordlePhase.playing,
-        solution: pool[_random.nextInt(pool.length)],
-        rows: const [],
-        input: List<String>.filled(length, ''),
-        cursor: 0,
-        acceptedWords: accepted,
-        solutionPool: pool,
-        hintsUsed: 0,
-        round: state.round + 1,
-      );
-    } catch (_) {
-      if (token != _loadToken || !ref.mounted) return;
-      state = WordleGameState.loading(
+          phase: WordlePhase.playing,
+          solutionPool: pool,
+          hintsUsed: 0,
+        );
+      },
+      onFailed: () => state = WordleGameState.loading(
         languageCode: languageCode,
         wordLength: wordLength,
         difficulty: difficulty,
-      ).copyWith(phase: WordlePhase.failed);
-    }
-  }
-
-  /// Falls back to the closest usable length when the selected one does not
-  /// have enough words in the current list (which can happen after switching
-  /// language or difficulty).
-  int _resolveLength(List<int> available, int requested) {
-    if (available.isEmpty || available.contains(requested)) return requested;
-    return available.reduce(
-      (a, b) => (a - requested).abs() <= (b - requested).abs() ? a : b,
+        failed: true,
+      ),
     );
   }
 }

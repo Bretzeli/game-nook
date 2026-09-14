@@ -2,9 +2,30 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/l10n/locale_notifier.dart';
 import '../../../../core/words/word_alphabet.dart';
 import '../domain/wordle_models.dart';
+
+/// The words one round is played with.
+class WordleRoundWords {
+  const WordleRoundWords({
+    required this.wordLength,
+    required this.solutionPool,
+    required this.acceptedWords,
+  });
+
+  /// The length actually played, which can differ from the one asked for —
+  /// see [WordleWordRepository.roundWords].
+  final int wordLength;
+
+  /// The words the solution is drawn from.
+  final List<String> solutionPool;
+
+  /// Every word a guess may be.
+  final Set<String> acceptedWords;
+}
 
 /// Loads the bundled word lists and keeps the parsed results in memory.
 ///
@@ -60,6 +81,33 @@ class WordleWordRepository {
         if ((counts[length] ?? 0) >= kWordleMinWordsPerLength) length,
     ];
     return lengths;
+  }
+
+  /// Everything a round with a solution from [difficulty]'s list needs.
+  ///
+  /// When that list does not have enough words of [wordLength] — which can
+  /// happen after switching language or difficulty — the closest length that
+  /// does is played instead.
+  Future<WordleRoundWords> roundWords(
+    String languageCode,
+    WordleDifficulty difficulty,
+    int wordLength,
+  ) async {
+    final lengths = await availableLengths(languageCode, difficulty);
+    final length = _closestLength(lengths, wordLength);
+
+    return WordleRoundWords(
+      wordLength: length,
+      solutionPool: await solutionPool(languageCode, difficulty, length),
+      acceptedWords: await acceptedWords(languageCode, length),
+    );
+  }
+
+  int _closestLength(List<int> available, int requested) {
+    if (available.isEmpty || available.contains(requested)) return requested;
+    return available.reduce(
+      (a, b) => (a - requested).abs() <= (b - requested).abs() ? a : b,
+    );
   }
 
   String _listKey(String languageCode, WordleDifficulty difficulty) =>
@@ -161,3 +209,20 @@ _ParseResult _parseWordList(_ParseRequest request) {
 
   return _ParseResult(countsByLength: counts, words: words);
 }
+
+/// Shared by every Wordle-style game, so a list parsed for one of them is
+/// already warm for the others.
+final wordleWordRepositoryProvider = Provider<WordleWordRepository>((ref) {
+  ref.keepAlive();
+  return WordleWordRepository();
+});
+
+/// Word lengths a length picker may offer for solutions from [difficulty]'s
+/// list, in the current language.
+final wordleAvailableLengthsProvider =
+    FutureProvider.family<List<int>, WordleDifficulty>((ref, difficulty) {
+      final languageCode = ref.watch(appLocaleProvider).languageCode;
+      return ref
+          .watch(wordleWordRepositoryProvider)
+          .availableLengths(languageCode, difficulty);
+    });

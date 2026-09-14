@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme_extension.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/app_strings_provider.dart';
+import '../../features/games/dont_wordle/dont_wordle_page.dart';
 import '../../features/games/game_placeholder_page.dart';
 import '../../features/games/spelling_bee/spelling_bee_page.dart';
 import '../../features/games/sudoku/sudoku_page.dart';
@@ -90,9 +91,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/dont-wordle',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: GamePlaceholderPage(gameId: GameId.dontWordle),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: DontWordlePage()),
           ),
           GoRoute(
             path: '/wormdle',

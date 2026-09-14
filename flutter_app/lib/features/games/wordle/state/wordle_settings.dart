@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/wordle_models.dart';
+import '../../wordle_shared/domain/wordle_models.dart';
 
 /// Player preferences. They outlive a single round: changing the difficulty is
 /// picked up by the next game, hard mode applies to the next guess, only the

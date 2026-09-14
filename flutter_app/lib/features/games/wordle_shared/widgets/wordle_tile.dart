@@ -23,6 +23,7 @@ class WordleTile extends StatelessWidget {
     this.flipEnd = 1,
     this.selected = false,
     this.isSolution = false,
+    this.emptyBorderColor,
     this.onTap,
   });
 
@@ -43,6 +44,11 @@ class WordleTile extends StatelessWidget {
 
   final bool selected;
   final bool isSolution;
+
+  /// Outline of the tile while it is still empty; the palette's empty border
+  /// when `null`.
+  final Color? emptyBorderColor;
+
   final VoidCallback? onTap;
 
   @override
@@ -99,7 +105,7 @@ class WordleTile extends StatelessWidget {
     } else if (letter.isNotEmpty) {
       borderColor = palette.filledBorder;
     } else {
-      borderColor = palette.emptyBorder;
+      borderColor = emptyBorderColor ?? palette.emptyBorder;
     }
 
     final content = Container(
