@@ -26,7 +26,7 @@ import 'widgets/spelling_bee_toolbar.dart';
 /// instead of a single scrolling line above it.
 const double _kPanelBreakpoint = 780;
 
-/// How long a word that spells nothing stays on the line: long enough to
+/// How long a word that was turned down stays on the line: long enough to
 /// finish its shake and to be read, short enough not to be in the way.
 const Duration _kRejectedWordLingers = Duration(milliseconds: 520);
 
@@ -107,7 +107,13 @@ class _SpellingBeePageState extends ConsumerState<SpellingBeePage> {
 
   void _shuffle() {
     ref.read(spellingBeeGameProvider.notifier).shuffle();
-    setState(() => _shuffleToken++);
+    setState(() {
+      _shuffleToken++;
+      // The letters have moved out from under the tiles: the tile that was
+      // lit is no longer the one the last letter came from, and none should
+      // light up again until a letter is entered.
+      _pressedLetter = null;
+    });
   }
 
   void _submit() {
@@ -122,21 +128,15 @@ class _SpellingBeePageState extends ConsumerState<SpellingBeePage> {
         const Duration(milliseconds: 2400),
       );
       setState(() => _shakeToken++);
-      // Letters that spell nothing have nothing left to fix, so they are
-      // taken off the line once they have finished shaking and the next word
-      // can be typed straight away. Everything else stays: a word that is too
-      // short, or missing the middle letter, is one edit away from counting.
-      if (rejection.kind == BeeRejectionKind.notAWord) {
-        _clearAfterShake(before.input);
-      }
+      // Whatever was wrong with it, a word that was turned down is taken off
+      // the line once it has finished shaking, so the next one can be typed
+      // straight away instead of backspaced for.
+      _clearAfterShake(before.input);
       return;
     }
 
     final after = ref.read(spellingBeeGameProvider);
-    setState(() {
-      _lineToken++;
-      _lineWasRejected = false;
-    });
+    _replaceLine(rejected: false);
     _showFeedback(
       _rewardFeedback(strings, before, after),
       const Duration(milliseconds: 2000),
@@ -150,10 +150,18 @@ class _SpellingBeePageState extends ConsumerState<SpellingBeePage> {
     _clearTimer = Timer(_kRejectedWordLingers, () {
       if (!mounted || ref.read(spellingBeeGameProvider).input != word) return;
       ref.read(spellingBeeGameProvider.notifier).clearInput();
-      setState(() {
-        _lineToken++;
-        _lineWasRejected = true;
-      });
+      _replaceLine(rejected: true);
+    });
+  }
+
+  /// Starts the line over. The word on its way out keeps the shake it was
+  /// given — the line taking its place must not inherit it, or the bare caret
+  /// shakes after the word does, and so does every word accepted afterwards.
+  void _replaceLine({required bool rejected}) {
+    setState(() {
+      _lineToken++;
+      _lineWasRejected = rejected;
+      _shakeToken = 0;
     });
   }
 

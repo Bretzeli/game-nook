@@ -149,36 +149,23 @@ class SpellingBeeHive extends StatelessWidget {
     required double height,
     required int order,
   }) {
-    Widget tile = _HexTile(
+    // Everything a tile does once it is on the board is animated from inside
+    // it. Wrapping a tile in an effect and taking that wrapper away again
+    // builds the tile anew, which loses the tap it is in the middle of and
+    // replays whatever animation the new tile is holding.
+    final tile = _HexTile(
       letter: letter,
       isCenter: isCenter,
       width: width,
       height: height,
       palette: palette,
       shuffleToken: shuffleToken,
+      // The tile the last letter came from takes the keystroke, whether it
+      // was tapped or typed.
+      pressToken: pressedLetter == letter ? pressToken : 0,
       order: order,
       onTap: enabled ? () => onLetter(letter) : null,
     );
-
-    // The tile the last letter came from takes the keystroke, whether it was
-    // tapped or typed.
-    if (pressedLetter == letter && pressToken > 0) {
-      tile = tile
-          .animate(key: ValueKey('press-$pressToken'))
-          .scaleXY(
-            begin: 0.84,
-            end: 1,
-            duration: 320.ms,
-            curve: Curves.elasticOut,
-          )
-          .shimmer(
-            duration: 420.ms,
-            color: (isCenter ? Colors.white : palette.normal).withValues(
-              alpha: 0.55,
-            ),
-            padding: 0,
-          );
-    }
 
     // A new puzzle deals the tiles in from the middle outwards.
     return tile
@@ -202,6 +189,7 @@ class _HexTile extends StatefulWidget {
     required this.height,
     required this.palette,
     required this.shuffleToken,
+    required this.pressToken,
     required this.order,
     required this.onTap,
   });
@@ -212,6 +200,12 @@ class _HexTile extends StatefulWidget {
   final double height;
   final SpellingBeePalette palette;
   final int shuffleToken;
+
+  /// Changes whenever this tile's letter is entered, and is `0` for as long as
+  /// the last letter came from somewhere else. Entering the same letter twice
+  /// changes it too, so the press plays again instead of standing still.
+  final int pressToken;
+
   final int order;
   final VoidCallback? onTap;
 
@@ -219,9 +213,45 @@ class _HexTile extends StatefulWidget {
   State<_HexTile> createState() => _HexTileState();
 }
 
-class _HexTileState extends State<_HexTile> {
+class _HexTileState extends State<_HexTile> with TickerProviderStateMixin {
+  /// The tile's own animations hang off controllers rather than off keys that
+  /// would rebuild it. Both sit parked at the end, which is what a tile at
+  /// rest looks like, and are wound back only when this tile has something to
+  /// play. [Animate] fills in their durations when it is first built.
+  late final AnimationController _press;
+  late final AnimationController _shuffle;
+
   bool _pressed = false;
   bool _hovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _press = AnimationController(vsync: this, value: 1);
+    _shuffle = AnimationController(vsync: this, value: 1);
+  }
+
+  @override
+  void didUpdateWidget(_HexTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pressToken > 0 && widget.pressToken != oldWidget.pressToken) {
+      _press.forward(from: 0);
+    }
+    // The centre letter stays where it is through a shuffle, so it has
+    // nothing to fade back in.
+    if (!widget.isCenter &&
+        widget.shuffleToken > 0 &&
+        widget.shuffleToken != oldWidget.shuffleToken) {
+      _shuffle.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _press.dispose();
+    _shuffle.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -246,9 +276,9 @@ class _HexTileState extends State<_HexTile> {
 
     // Shuffling swaps the letters underneath the tiles, so they fade back in
     // one after another while the hive itself stays put.
-    if (widget.shuffleToken > 0 && !widget.isCenter) {
+    if (!widget.isCenter) {
       letter = letter
-          .animate(key: ValueKey('shuffle-${widget.shuffleToken}'))
+          .animate(controller: _shuffle, autoPlay: false)
           .fadeIn(duration: 200.ms, delay: (40 * widget.order).ms)
           .scaleXY(
             begin: 0.4,
@@ -260,7 +290,7 @@ class _HexTileState extends State<_HexTile> {
           .rotate(begin: -0.06, end: 0, duration: 340.ms);
     }
 
-    return MouseRegion(
+    final Widget tile = MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() {
@@ -293,6 +323,23 @@ class _HexTileState extends State<_HexTile> {
         ),
       ),
     );
+
+    // The tile the letter came from takes the keystroke.
+    return tile
+        .animate(controller: _press, autoPlay: false)
+        .scaleXY(
+          begin: 0.84,
+          end: 1,
+          duration: 320.ms,
+          curve: Curves.elasticOut,
+        )
+        .shimmer(
+          duration: 420.ms,
+          color: (widget.isCenter ? Colors.white : palette.normal).withValues(
+            alpha: 0.55,
+          ),
+          padding: 0,
+        );
   }
 }
 

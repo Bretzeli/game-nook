@@ -167,6 +167,31 @@ void main() {
     expect(_game(tester).input, center);
   });
 
+  testWidgets('a letter tapped again before the board redraws still counts', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openBee(tester);
+    final center = _game(tester).puzzle.centerLetter;
+    final tile = find.descendant(
+      of: find.byType(SpellingBeeHive),
+      matching: find.text(center),
+    );
+
+    // The second finger goes down before the frame that answers the first
+    // tap has been drawn, which is what tapping quickly actually looks like.
+    await tester.tap(tile);
+    final second = await tester.startGesture(tester.getCenter(tile));
+    await tester.pump(const Duration(milliseconds: 16));
+    await second.up();
+    await _advance(tester, 120);
+
+    expect(_game(tester).input, center * 2);
+  });
+
   testWidgets('a word that spells nothing is turned down with a reason', (
     tester,
   ) async {
@@ -227,10 +252,64 @@ void main() {
       find.text('Missing the middle letter ${game.puzzle.centerLetter}'),
       findsOneWidget,
     );
-    // A word that is one edit away from counting keeps its letters.
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(_game(tester).input, game.outerLetters.take(4).join());
+    // Every word that is turned down leaves the line once it has shaken,
+    // whatever was wrong with it.
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_game(tester).input, isEmpty);
 
+    await _clearToast(tester);
+  });
+
+  testWidgets('a word that is too short leaves the line as well', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openBee(tester);
+    final center = _game(tester).puzzle.centerLetter;
+
+    await _spell(tester, center * (kBeeMinWordLength - 1));
+    await _submit(tester);
+
+    expect(find.text('At least $kBeeMinWordLength letters'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_game(tester).input, isEmpty);
+
+    await _clearToast(tester);
+  });
+
+  testWidgets('the shake leaves the line with the word that earned it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1112);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _openBee(tester);
+    final center = _game(tester).puzzle.centerLetter;
+    final word = _game(tester).puzzle.wordsOf(BeeTier.normal).first;
+    const shake = ValueKey('reject-1');
+
+    await _spell(tester, center * 4);
+    await _submit(tester);
+    expect(find.byKey(shake), findsOneWidget);
+
+    // Once the word is gone the bare caret is left standing still, rather
+    // than shaking a second time in its place.
+    await tester.pump(const Duration(milliseconds: 400));
+    await _advance(tester, 400);
+    expect(_game(tester).input, isEmpty);
+    expect(find.byKey(shake), findsNothing);
+    await _clearToast(tester);
+
+    // And a word that counts is not shaken for the one that did not.
+    await _spell(tester, word);
+    expect(find.byKey(shake), findsNothing);
+    await _submit(tester);
+    expect(find.byKey(shake), findsNothing);
+    expect(_game(tester).found.single.word, word);
     await _clearToast(tester);
   });
 
