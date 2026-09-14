@@ -34,7 +34,7 @@ enum DontWordleOutcome {
   hitSolution,
 
   /// A guess left the solution as the only word, of every list, that still
-  /// fits.
+  /// fits — while more guesses still had to miss it.
   cornered,
 
   gaveUp,

@@ -238,9 +238,10 @@ class AppStrings {
 
   String get dontWordleWordsLeftHint => _isGerman
       ? 'Wörter aus allen Wortlisten, die noch zu allen Hinweisen passen. '
-            'Bleibt nur eins übrig, hast du verloren.'
+            'Bleibt nur eins übrig, während du noch raten musst, hast du '
+            'verloren.'
       : 'Words from every word list that still fit every hint. If only one '
-            'is left, you lose.';
+            'is left while you still have guesses to make, you lose.';
 
   /// How many words that could be the solution still fit every hint.
   String dontWordleSolutionsLeft(int count) {
@@ -263,10 +264,6 @@ class AppStrings {
       : 'You survived! Now find the word';
 
   String get dontWordleSolvedTitle => _isGerman ? 'Meisterhaft!' : 'Flawless!';
-
-  String dontWordleSolvedDetail(int attempt, int total) => _isGerman
-      ? 'Überlebt und mit Versuch $attempt von $total gefunden'
-      : 'Survived, then found it on try $attempt of $total';
 
   String get dontWordleSurvivedTitle => _isGerman ? 'Überlebt!' : 'Survived!';
 

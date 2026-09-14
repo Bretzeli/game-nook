@@ -242,6 +242,30 @@ void main() {
     expect(cornered.rowCountAfter(cornered.board.rows.length), 6);
   });
 
+  test('the last guess to survive may leave a single word to find', () async {
+    final container = _container(repository: _fixedRepository());
+    final state = await _ready(container);
+
+    for (final word in _misses.take(kDontWordleDefaultGuesses - 2)) {
+      expect(_play(container, word), isNull, reason: word);
+    }
+    expect(_play(container, _other(state)), isNull);
+    // The sixth and last guess to survive leaves nothing but the solution.
+    expect(_play(container, _companion), isNull);
+
+    final survived = _state(container);
+    expect(survived.progress.wordsLeft, (words: 1, solutions: 1));
+    expect(survived.progress.outcome, isNull);
+    expect(survived.progress.phase, DontWordlePhase.finding);
+    expect(survived.rowCountAfter(survived.board.rows.length), 8);
+    expect(survived.acceptsInput, isTrue);
+    // Nothing but the solution fits, so a hint has nothing to offer.
+    expect(survived.canHint, isFalse);
+
+    expect(_play(container, state.board.solution), isNull);
+    expect(_state(container).progress.outcome, DontWordleOutcome.solved);
+  });
+
   test('surviving earns two more rows to find the word', () async {
     final container = _container(repository: _fixedRepository());
     final state = await _ready(container);

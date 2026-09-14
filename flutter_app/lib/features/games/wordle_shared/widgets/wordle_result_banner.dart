@@ -24,6 +24,7 @@ class WordleResultBanner extends ConsumerWidget {
     required this.icon,
     required this.title,
     this.detail,
+    this.revealSolution = true,
     required this.onNewGame,
   });
 
@@ -41,8 +42,11 @@ class WordleResultBanner extends ConsumerWidget {
   final IconData icon;
   final String title;
 
-  /// The line under [title]. When `null`, the solution is revealed there.
+  /// The line under [title]. When `null`, the solution is revealed there —
+  /// unless [revealSolution] is off, which leaves the title on its own.
   final String? detail;
+
+  final bool revealSolution;
 
   final VoidCallback onNewGame;
 
@@ -96,16 +100,18 @@ class WordleResultBanner extends ConsumerWidget {
                         color: accent,
                       ),
                     ),
-                    SizedBox(height: context.rs(1)),
-                    switch (detail) {
-                      final detail? => Text(
-                        detail,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: decor.subtleTextColor,
+                    if (detail != null || revealSolution) ...[
+                      SizedBox(height: context.rs(1)),
+                      switch (detail) {
+                        final detail? => Text(
+                          detail,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: decor.subtleTextColor,
+                          ),
                         ),
-                      ),
-                      null => _Solution(solution: solution, strings: strings),
-                    },
+                        null => _Solution(solution: solution, strings: strings),
+                      },
+                    ],
                   ],
                 ),
               ),

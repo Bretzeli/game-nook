@@ -169,7 +169,7 @@ void main() {
     await _guess(tester, container, solution);
 
     expect(find.text('Flawless!'), findsOneWidget);
-    expect(find.text('Survived, then found it on try 1 of 2'), findsOneWidget);
+    expect(find.textContaining('found it'), findsNothing);
   });
 
   testWidgets('both counters wait for the flip, and only no other word corners', (
@@ -202,6 +202,36 @@ void main() {
     expect(find.text('1 word left'), findsOneWidget);
     expect(find.text('Cornered!'), findsOneWidget);
     expect(find.text(_solution(container)), findsOneWidget);
+  });
+
+  testWidgets('a single word left after the last guess is still to find', (
+    tester,
+  ) async {
+    _useSize(tester, const Size(834, 1112));
+    final container = await _openDontWordle(
+      tester,
+      repository: _fixedRepository(),
+    );
+    final solution = _solution(container);
+    final other = _solutions.firstWhere((w) => w != solution);
+
+    for (final word in _misses.take(4)) {
+      await _guess(tester, container, word);
+    }
+    await _guess(tester, container, other);
+    // The sixth and last guess to survive leaves nothing but the solution.
+    await _guess(tester, container, _companion);
+    await tester.pump(kRowsResizeDuration);
+    await settle(tester);
+
+    expect(find.text('1 word left'), findsOneWidget);
+    expect(find.text('Cornered!'), findsNothing);
+    expect(find.text('You survived! Now find the word'), findsOneWidget);
+    expect(find.byType(WordleTile), findsNWidgets(40));
+
+    await _guess(tester, container, solution);
+
+    expect(find.text('Flawless!'), findsOneWidget);
   });
 
   testWidgets('a hint fills in a word and counts up', (tester) async {

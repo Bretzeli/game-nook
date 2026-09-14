@@ -90,7 +90,6 @@ class DontWordlePage extends ConsumerWidget {
     DontWordleGameState game,
     DontWordleOutcome outcome,
   ) {
-    final progress = game.progress;
     final (icon, title) = switch (outcome) {
       DontWordleOutcome.solved => (
         Icons.emoji_events_rounded,
@@ -127,9 +126,7 @@ class DontWordlePage extends ConsumerWidget {
       title: title,
       // A found word is on the board in green already; every other ending
       // reveals it here.
-      detail: outcome == DontWordleOutcome.solved
-          ? strings.dontWordleSolvedDetail(progress.attempt, progress.attempts)
-          : null,
+      revealSolution: outcome != DontWordleOutcome.solved,
       onNewGame: ref.read(dontWordleGameProvider.notifier).newGame,
     );
   }

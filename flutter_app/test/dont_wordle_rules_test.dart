@@ -91,16 +91,30 @@ void main() {
       expect(progress.phase, DontWordlePhase.avoiding);
     });
 
-    test('a guess that leaves only the solution of all words ends it', () {
+    test('only the solution left with guesses still to make corners', () {
+      final progress = _progress(_missRows(5), [
+        ..._plenty(4),
+        (words: 1, solutions: 1),
+      ]);
+
+      // A sixth guess would have to miss the only word that fits.
+      expect(progress.outcome, DontWordleOutcome.cornered);
+      expect(progress.attempt, 5);
+      expect(progress.hasSurvived, isFalse);
+    });
+
+    test('the last guess to survive may leave only the solution', () {
       final progress = _progress(_missRows(6), [
         ..._plenty(5),
         (words: 1, solutions: 1),
       ]);
 
-      // Even the very last guess to survive must leave a way out.
-      expect(progress.outcome, DontWordleOutcome.cornered);
-      expect(progress.attempt, 6);
-      expect(progress.hasSurvived, isFalse);
+      // Nothing more has to miss it: the single word left is there to find.
+      expect(progress.isFinished, isFalse);
+      expect(progress.phase, DontWordlePhase.finding);
+      expect(progress.attempt, 1);
+      expect(progress.hasSurvived, isTrue);
+      expect(progress.wordsLeft, (words: 1, solutions: 1));
     });
 
     test('surviving every guess moves on to finding the word', () {

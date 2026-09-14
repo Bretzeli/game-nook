@@ -7,9 +7,10 @@ import 'dont_wordle_models.dart';
 ///
 /// [wordsLeft] holds how many words fit every hint before the first guess and
 /// after each one since. The round is lost the moment a guess hits the
-/// solution, or, while the word is being avoided, leaves it as the only word
-/// of every list that still fits. After [avoidAttempts] guesses survived,
-/// [findAttempts] more are for actually finding it.
+/// solution, or leaves it as the only word of every list that still fits
+/// while more guesses still have to miss it. After [avoidAttempts] guesses
+/// survived, [findAttempts] more are for actually finding it — however few
+/// words are left by then.
 ///
 /// Deriving this from the rows rather than storing it keeps it in step with
 /// the board, down to showing the round as it stood a few rows ago while the
@@ -52,7 +53,11 @@ DontWordleProgress dontWordleProgress({
     final hit = row.word == solution;
     if (guesses <= avoidAttempts) {
       if (hit) return at(guesses, DontWordleOutcome.hitSolution);
-      if (wordsLeft.length > guesses && wordsLeft[guesses].words <= 1) {
+      // Only a guess still to be made has to miss a word that is the only one
+      // left; after the last of them, that word is simply the one to find.
+      if (guesses < avoidAttempts &&
+          wordsLeft.length > guesses &&
+          wordsLeft[guesses].words <= 1) {
         return at(guesses, DontWordleOutcome.cornered);
       }
     } else if (hit) {
